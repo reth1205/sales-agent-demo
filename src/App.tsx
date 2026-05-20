@@ -328,6 +328,48 @@ function QuestionnaireStepper() {
     return question ? state.questionnaire.answers[question.id] ?? '' : '';
   };
   const isLastQuestion = () => state.questionnaire.currentQuestionIndex >= state.questionnaire.snapshot.length - 1;
+  const normalizeVoiceCommand = (text: string) =>
+    text
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[.,!?]/g, '');
+  const runVoiceNavigationCommand = (transcript: string) => {
+    const command = normalizeVoiceCommand(transcript);
+    const previousCommands = ['previous', 'previous question', 'previus', 'previus question', 'back', 'go back', 'anterior', 'pregunta anterior', 'regresar'];
+    const nextCommands = ['next', 'next question', 'continue', 'go next', 'siguiente', 'pregunta siguiente', 'continuar'];
+    const finishCommands = ['finish', 'finalize', 'generate review', 'submit', 'done', 'finalizar', 'terminar', 'generar revision'];
+
+    if (previousCommands.includes(command)) {
+      actions.previousQuestion();
+      actions.showToast('Voice command: previous question.');
+      return true;
+    }
+
+    if (nextCommands.includes(command)) {
+      if (isLastQuestion()) {
+        actions.buildReview();
+        actions.showToast('Voice command: generate review.');
+      } else {
+        actions.nextQuestion();
+        actions.showToast('Voice command: next question.');
+      }
+      return true;
+    }
+
+    if (finishCommands.includes(command)) {
+      if (isLastQuestion()) {
+        actions.buildReview();
+        actions.showToast('Voice command: generate review.');
+      } else {
+        actions.showToast('Finish is available on the last question.');
+      }
+      return true;
+    }
+
+    return false;
+  };
 
   const listen = () => {
     const SpeechCtor = (window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }).SpeechRecognition
@@ -339,6 +381,7 @@ function QuestionnaireStepper() {
     recognition.lang = 'en-US';
     recognition.onresult = (event: SpeechRecognitionResultEventLike) => {
       const transcript = event.results[0][0].transcript;
+      if (runVoiceNavigationCommand(transcript)) return;
       actions.updateAnswer(question.id, transcript);
     };
     recognition.onerror = () => actions.showToast('Voice capture failed. Manual fallback is ready.');

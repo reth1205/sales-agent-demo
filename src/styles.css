@@ -41,20 +41,22 @@ button {
 .phone-shell {
   position: relative;
   width: min(100vw, 430px);
-  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
   background: #f7f9fb;
   overflow: hidden;
   box-shadow: 0 24px 80px rgba(34, 44, 54, 0.18);
 }
 
 .page {
-  min-height: 100vh;
+  min-height: 100%;
 }
 
 .app-page {
-  padding: 18px 16px 96px;
+  padding: 18px 16px 124px;
   overflow-y: auto;
-  height: 100vh;
+  height: 100%;
+  overscroll-behavior: contain;
 }
 
 .login-page {
@@ -562,13 +564,11 @@ textarea {
 }
 
 .question-action-bar {
-  position: sticky;
-  bottom: 86px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
   gap: 10px;
-  padding-top: 4px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0), #fff 28%);
+  padding-top: 2px;
+  background: transparent;
 }
 
 .question-row {
