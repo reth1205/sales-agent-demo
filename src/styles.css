@@ -173,6 +173,11 @@ span {
   background: #e6f1f3;
 }
 
+.secondary-action.danger {
+  color: #9d2f24;
+  background: #f8e7e2;
+}
+
 .wide {
   width: 100%;
 }
@@ -408,6 +413,11 @@ span {
   font-size: 18px;
 }
 
+.compact-metrics div {
+  min-height: 62px;
+  padding: 10px;
+}
+
 .timeline-item,
 .context-box,
 .summary-box {
@@ -501,12 +511,55 @@ textarea {
 
 .voice-card {
   display: grid;
-  justify-items: center;
   gap: 12px;
   padding: 16px;
-  text-align: center;
+  background: #ffffff;
+  border: 1px solid #d9e1e7;
+  border-radius: 8px;
+}
+
+.voice-card.active {
+  border-color: #0f6c7a;
+  box-shadow: 0 0 0 3px rgba(15, 108, 122, 0.12);
+}
+
+.voice-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.voice-status svg {
+  flex: 0 0 auto;
+  color: #0f6c7a;
+}
+
+.voice-status div {
+  display: grid;
+  gap: 2px;
+}
+
+.voice-status strong {
+  color: #15202b;
+}
+
+.voice-status span {
+  font-size: 13px;
+}
+
+.voice-transcript {
+  min-height: 92px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 12px;
   background: #f0f5f7;
   border-radius: 8px;
+}
+
+.voice-transcript p {
+  color: #34444f;
+  font-weight: 700;
 }
 
 .questionnaire-page {
@@ -554,13 +607,6 @@ textarea {
 .empty-answer {
   color: #8a6970;
   font-weight: 700;
-}
-
-.compact-voice-card {
-  grid-template-columns: auto 1fr;
-  justify-items: stretch;
-  align-items: center;
-  padding: 12px;
 }
 
 .question-action-bar {

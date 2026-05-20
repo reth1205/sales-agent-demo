@@ -298,6 +298,34 @@ export const actions = {
     persistVisits();
     actions.showToast('Pending sync completed.');
   },
+  clearTasks() {
+    setState('crm', 'tasks', []);
+    persistTasks();
+    actions.showToast('Generated tasks cleared.');
+  },
+  resetDemoActivity() {
+    setState('visits', visits.map((visit) => ({ ...visit })));
+    setState('progress', { ...initialProgress, milestones: [] });
+    setState('queue', []);
+    setState('crm', 'tasks', []);
+    setState('ui', {
+      activeVisitPromptId: undefined,
+      toast: undefined,
+    });
+    setState('questionnaire', {
+      visitId: undefined,
+      mode: state.questionnaire.mode,
+      snapshot: [],
+      answers: {},
+      review: undefined,
+      currentQuestionIndex: 0,
+    });
+    persistVisits();
+    persistProgress();
+    persistQueue();
+    persistTasks();
+    actions.showToast('Demo activity reset.');
+  },
   toggleOfflineMode() {
     setState('settings', 'offlineMode', (value) => !value);
     save('sales-demo-offline', state.settings.offlineMode);

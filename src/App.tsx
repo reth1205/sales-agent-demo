@@ -1,10 +1,10 @@
 import { A, Navigate, useLocation, useNavigate, useParams } from '@solidjs/router';
 import L from 'leaflet';
 import { ArrowDown, ArrowUp, CalendarDays, Check, CircleDot, ClipboardList, Home, MapPin, Mic, Plus, RefreshCcw, Save, Settings, Trash2, UserRound, UsersRound, WifiOff } from 'lucide-solid';
-import { createEffect, createMemo, createSignal, For, Match, onMount, Show, Switch } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, Match, onCleanup, onMount, Show, Switch } from 'solid-js';
 import type { JSX } from 'solid-js';
 import { actions, state } from './store';
-import { formatCurrency, getActiveQuestions, getDistanceMeters, speakText } from './services';
+import { formatCurrency, getActiveQuestions, getDistanceMeters } from './services';
 import type { Account, ReviewSummary, ScheduledVisit } from './types';
 
 const getAccount = (accountId: string) => state.crm.accounts.find((account) => account.id === accountId);
@@ -321,6 +321,10 @@ function QuestionnaireStepper() {
   const review = () => state.questionnaire.review;
   const activeQuestion = () => state.questionnaire.snapshot[state.questionnaire.currentQuestionIndex];
   const [speechSupported] = createSignal(Boolean((window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).SpeechRecognition || (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).webkitSpeechRecognition));
+  const [isListening, setIsListening] = createSignal(false);
+  const [interimTranscript, setInterimTranscript] = createSignal('');
+  let recognition: SpeechRecognitionLike | undefined;
+  let keepVoiceOpen = false;
   const progressLabel = () => `Question ${state.questionnaire.currentQuestionIndex + 1} of ${state.questionnaire.snapshot.length}`;
   const progressPercent = () => `${((state.questionnaire.currentQuestionIndex + 1) / Math.max(state.questionnaire.snapshot.length, 1)) * 100}%`;
   const currentAnswer = () => {
@@ -371,22 +375,82 @@ function QuestionnaireStepper() {
     return false;
   };
 
-  const listen = () => {
-    const SpeechCtor = (window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }).SpeechRecognition
+  const getSpeechCtor = () =>
+    (window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }).SpeechRecognition
       ?? (window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }).webkitSpeechRecognition;
+
+  const appendVoiceAnswer = (questionId: string, transcript: string) => {
+    const cleanTranscript = transcript.trim();
+    if (!cleanTranscript) return;
+    const current = state.questionnaire.answers[questionId] ?? '';
+    const separator = current.trim() ? ' ' : '';
+    actions.updateAnswer(questionId, `${current.trimEnd()}${separator}${cleanTranscript}`);
+  };
+
+  const startVoiceCapture = () => {
+    const SpeechCtor = getSpeechCtor();
     const question = activeQuestion();
-    if (!SpeechCtor || !question) return;
-    speakText(question.prompt);
-    const recognition = new SpeechCtor();
+    if (!SpeechCtor || !question || isListening()) return;
+
+    keepVoiceOpen = true;
+    setIsListening(true);
+    recognition = new SpeechCtor();
     recognition.lang = 'en-US';
+    recognition.continuous = true;
+    recognition.interimResults = true;
     recognition.onresult = (event: SpeechRecognitionResultEventLike) => {
-      const transcript = event.results[0][0].transcript;
-      if (runVoiceNavigationCommand(transcript)) return;
-      actions.updateAnswer(question.id, transcript);
+      let finalTranscript = '';
+      let interim = '';
+      const startIndex = event.resultIndex ?? 0;
+
+      for (let index = startIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const transcript = result[0]?.transcript?.trim() ?? '';
+        if (!transcript) continue;
+        if (result.isFinal) {
+          finalTranscript = `${finalTranscript}${finalTranscript ? ' ' : ''}${transcript}`;
+        } else {
+          interim = `${interim}${interim ? ' ' : ''}${transcript}`;
+        }
+      }
+
+      setInterimTranscript(interim);
+      if (!finalTranscript) return;
+      setInterimTranscript('');
+      if (runVoiceNavigationCommand(finalTranscript)) return;
+      const currentQuestion = activeQuestion();
+      if (currentQuestion) appendVoiceAnswer(currentQuestion.id, finalTranscript);
     };
-    recognition.onerror = () => actions.showToast('Voice capture failed. Manual fallback is ready.');
+    recognition.onerror = () => {
+      keepVoiceOpen = false;
+      setIsListening(false);
+      actions.showToast('Voice capture failed. Manual fallback is ready.');
+    };
+    recognition.onend = () => {
+      if (!keepVoiceOpen || state.questionnaire.mode !== 'voice' || review()) {
+        setIsListening(false);
+        return;
+      }
+      recognition?.start();
+    };
     recognition.start();
   };
+
+  const stopVoiceCapture = () => {
+    keepVoiceOpen = false;
+    setIsListening(false);
+    setInterimTranscript('');
+    recognition?.stop?.();
+    recognition = undefined;
+  };
+
+  createEffect(() => {
+    if (state.questionnaire.mode !== 'voice' || review() || !state.questionnaire.visitId) {
+      stopVoiceCapture();
+    }
+  });
+
+  onCleanup(stopVoiceCapture);
 
   return (
     <Show when={state.questionnaire.visitId && !review()}>
@@ -415,9 +479,25 @@ function QuestionnaireStepper() {
               </Show>
               <Show when={state.questionnaire.mode === 'voice'}>
                 <Show when={speechSupported()} fallback={<p>Voice recognition is not available in this browser. Manual input is ready below.</p>}>
-                  <div class="voice-card compact-voice-card">
-                    <Mic size={24} />
-                    <button class="primary-action" onClick={listen}>Listen</button>
+                  <div class={isListening() ? 'voice-card active' : 'voice-card'}>
+                    <div class="voice-status">
+                      <Mic size={24} />
+                      <div>
+                        <strong>{isListening() ? 'Microphone open' : 'Microphone ready'}</strong>
+                        <span>{isListening() ? 'Speak your answer or say a navigation command.' : 'Start the microphone to dictate continuously.'}</span>
+                      </div>
+                    </div>
+                    <div class="voice-transcript" aria-live="polite">
+                      <span class="eyebrow">Live dictation</span>
+                      <p>{interimTranscript() || currentAnswer() || 'Your spoken answer will appear here.'}</p>
+                    </div>
+                    <button
+                      class={isListening() ? 'secondary-action wide' : 'primary-action wide'}
+                      aria-pressed={isListening()}
+                      onClick={() => (isListening() ? stopVoiceCapture() : startVoiceCapture())}
+                    >
+                      {isListening() ? 'Stop microphone' : 'Start microphone'}
+                    </button>
                   </div>
                 </Show>
               </Show>
@@ -451,13 +531,22 @@ function QuestionnaireStepper() {
 
 type SpeechRecognitionLike = {
   lang: string;
+  continuous?: boolean;
+  interimResults?: boolean;
   onresult: (event: SpeechRecognitionResultEventLike) => void;
   onerror: () => void;
+  onend?: () => void;
   start: () => void;
+  stop?: () => void;
 };
 
 type SpeechRecognitionResultEventLike = {
-  results: ArrayLike<ArrayLike<{ transcript: string }>>;
+  resultIndex?: number;
+  results: ArrayLike<SpeechRecognitionResultLike>;
+};
+
+type SpeechRecognitionResultLike = ArrayLike<{ transcript: string }> & {
+  isFinal?: boolean;
 };
 
 function ReviewPanel() {
@@ -687,6 +776,38 @@ function InterviewQuestionsSettings() {
   );
 }
 
+function DemoCleanupSettings() {
+  const completedVisits = () => state.visits.filter((visit) => visit.status === 'Completed').length;
+
+  return (
+    <section class="panel">
+      <div class="section-title">
+        <div>
+          <span class="eyebrow">Demo cleanup</span>
+          <h2>Reset activity</h2>
+          <p>Clear generated demo data without changing session or questions.</p>
+        </div>
+      </div>
+      <div class="metric-grid compact-metrics">
+        <div><span>Tasks</span><strong>{state.crm.tasks.length}</strong></div>
+        <div><span>Completed</span><strong>{completedVisits()}</strong></div>
+        <div><span>Pending sync</span><strong>{state.queue.length}</strong></div>
+        <div><span>Progress</span><strong>{state.progress.percent}%</strong></div>
+      </div>
+      <div class="button-grid">
+        <button class="secondary-action" disabled={!state.crm.tasks.length} onClick={() => actions.clearTasks()}>
+          <Trash2 size={18} />
+          Clear tasks
+        </button>
+        <button class="secondary-action danger" onClick={() => actions.resetDemoActivity()}>
+          <RefreshCcw size={18} />
+          Reset demo
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function SettingsPage() {
   return (
     <div class="content-stack">
@@ -707,6 +828,7 @@ export function SettingsPage() {
           <button class="primary-action wide" onClick={() => actions.syncQueue()}>Sync pending updates</button>
         </Show>
       </section>
+      <DemoCleanupSettings />
       <InterviewQuestionsSettings />
       <section class="panel">
         <h3>Session</h3>
