@@ -435,6 +435,29 @@ span {
   border-radius: 8px;
 }
 
+.opportunity-strip {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  background: #fff9e8;
+  border: 1px solid #f2df9d;
+  border-radius: 8px;
+}
+
+.details-toggle {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #075c68;
+  background: transparent;
+  border: 1px solid #c9e8ec;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .summary-header,
 .summary-actions,
 .summary-stat-row,
@@ -1057,10 +1080,74 @@ textarea {
   z-index: 6;
 }
 
+.client-tabs {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.client-tabs button,
 .reporting-tabs button {
   min-width: 0;
   padding-inline: 6px;
   font-size: 12px;
+}
+
+.client-hero-panel,
+.executive-summary {
+  gap: 12px;
+}
+
+.schedule-list-panel {
+  gap: 0;
+  padding: 8px;
+}
+
+.schedule-row {
+  display: grid;
+  border-bottom: 1px solid #e6eef5;
+}
+
+.schedule-row:last-child {
+  border-bottom: 0;
+}
+
+.schedule-row-summary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 8px;
+  text-align: left;
+  background: transparent;
+}
+
+.schedule-row-summary > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.schedule-row-summary strong {
+  color: #15202b;
+}
+
+.schedule-row-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #5d6b78;
+  flex: 0 0 auto;
+}
+
+.schedule-row-detail {
+  display: grid;
+  gap: 10px;
+  padding: 0 8px 12px;
+}
+
+.schedule-row.expanded {
+  background: #f8fbff;
+  border-radius: 8px;
 }
 
 .manager-kpi-strip {
@@ -1462,6 +1549,273 @@ textarea {
   padding: 0;
   text-align: left;
   background: transparent;
+}
+
+/* Vibrant demo theme */
+:root {
+  color: #172033;
+  background: #eef6fb;
+}
+
+.app-frame {
+  background:
+    linear-gradient(135deg, rgba(45, 182, 125, 0.18), transparent 34%),
+    linear-gradient(215deg, rgba(54, 120, 246, 0.14), transparent 42%),
+    linear-gradient(315deg, rgba(242, 170, 36, 0.18), transparent 46%),
+    #eef6fb;
+}
+
+.phone-shell {
+  background: #fbfdff;
+  box-shadow: 0 24px 80px rgba(23, 32, 51, 0.2);
+}
+
+.login-page {
+  background:
+    linear-gradient(180deg, rgba(0, 138, 154, 0.16), transparent 42%),
+    linear-gradient(315deg, rgba(226, 85, 63, 0.12), transparent 52%),
+    #fbfdff;
+}
+
+.brand-mark,
+.avatar,
+.primary-action,
+.pill.selected,
+.progress-ring,
+.bar-line i,
+.question-progress span,
+.demo-progress-line span,
+.trend-legend .team,
+.trend-bars .team {
+  background: #008a9a;
+}
+
+.primary-action {
+  box-shadow: 0 10px 22px rgba(0, 138, 154, 0.22);
+}
+
+.secondary-action,
+.icon-button,
+.nav-link.active {
+  color: #075c68;
+  background: #dff6f8;
+}
+
+.secondary-action.danger,
+.icon-button.danger {
+  color: #b3382b;
+  background: #ffe4dc;
+}
+
+.agent-preview,
+.panel,
+.progress-widget,
+.visit-card,
+.bottom-sheet,
+.map-demo-controls,
+.nearby-banner,
+.manager-kpi {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(23, 32, 51, 0.08);
+  box-shadow: 0 18px 44px rgba(23, 32, 51, 0.1);
+}
+
+.bottom-nav {
+  background: rgba(255, 255, 255, 0.94);
+  border-top-color: rgba(23, 32, 51, 0.08);
+}
+
+.eyebrow,
+.offline-icon,
+.trend-legend .visits,
+.trend-bars .visits {
+  color: #e2553f;
+}
+
+.trend-legend .visits,
+.trend-bars .visits {
+  background: #e2553f;
+}
+
+.nav-link.active,
+.voice-status svg,
+.timeline-item svg,
+.inline-icon svg,
+.manager-kpi svg,
+.insight-icon,
+.nearby-banner > svg,
+.insight-panel svg {
+  color: #008a9a;
+}
+
+.metric-grid div,
+.timeline-item,
+.context-box,
+.summary-box,
+.question-card,
+.voice-transcript,
+.coverage-row,
+.insight-card,
+.empty-panel,
+.agent-row {
+  background: #f1f7ff;
+}
+
+.insight-panel {
+  color: #075c68;
+  background: #e2f7f5;
+  border-color: #bce9e5;
+}
+
+.visit-workflow-panel,
+.coaching-box,
+.task-summary,
+.recommended-action,
+.top-alert {
+  background: #fff4d8;
+  border-color: #f7d77a;
+}
+
+.danger-zone,
+.top-alert.critical,
+.insight-card.critical {
+  background: #ffece6;
+  border-color: #ffc9bb;
+}
+
+.status-badge.inprogress,
+.status-badge.questionnaire {
+  color: #075c68;
+  background: #dff6f8;
+}
+
+.status-badge.completed,
+.risk-pill,
+.trend-legend .crm,
+.trend-bars .crm {
+  color: #17643f;
+  background: #dcf7e8;
+}
+
+.trend-legend .crm,
+.trend-bars .crm {
+  background: #2fb67c;
+}
+
+.risk-pill.watch,
+.insight-card.warning {
+  color: #7d5700;
+  background: #fff3c4;
+}
+
+.risk-pill.high {
+  color: #b3382b;
+  background: #ffe4dc;
+}
+
+.risk-list span {
+  color: #b3382b;
+  background: #ffece6;
+}
+
+.agent-marker span {
+  background: #e2553f;
+}
+
+.account-marker.scheduledVisit span,
+.visit-marker.completed span {
+  background: #2fb67c;
+}
+
+.account-marker.activeAccount span {
+  background: #3678f6;
+}
+
+.account-marker.opportunity span {
+  background: #f2aa24;
+}
+
+.account-marker.risk span {
+  background: #e2553f;
+}
+
+.account-marker.completed span {
+  background: #7c8ea0;
+}
+
+.account-marker.selected span {
+  outline-color: rgba(0, 138, 154, 0.32);
+}
+
+.map-view .leaflet-tile {
+  filter: saturate(1.14) contrast(1.03) brightness(1.02);
+}
+
+.contact-range-circle {
+  stroke-dasharray: 8 7;
+}
+
+.contact-grid-cell {
+  transition: fill-opacity 160ms ease, stroke-opacity 160ms ease;
+}
+
+.contact-grid-cell.density-1 {
+  stroke-opacity: 0.42;
+}
+
+.contact-grid-cell.density-2,
+.contact-grid-cell.density-3 {
+  stroke-opacity: 0.62;
+}
+
+.coverage-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: fit-content;
+  padding: 7px 9px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(23, 32, 51, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(23, 32, 51, 0.1);
+}
+
+.map-utility-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selected-tool {
+  color: #fff;
+  background: #008a9a;
+}
+
+.coverage-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #34444f;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.coverage-legend i {
+  width: 11px;
+  height: 11px;
+  display: inline-block;
+  border-radius: 3px;
+}
+
+.coverage-legend .range-dot {
+  border: 2px dashed #008a9a;
+  background: rgba(47, 182, 124, 0.12);
+  border-radius: 50%;
+}
+
+.coverage-legend .grid-dot {
+  border: 1px solid #3678f6;
+  background: rgba(54, 120, 246, 0.18);
 }
 
 @media (min-width: 760px) {

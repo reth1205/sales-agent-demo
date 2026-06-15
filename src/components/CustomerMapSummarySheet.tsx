@@ -1,6 +1,6 @@
 import { useNavigate } from '@solidjs/router';
-import { CheckCircle2, ClipboardList, MapPinned, Navigation, Play, X } from 'lucide-solid';
-import { For, Show } from 'solid-js';
+import { CheckCircle2, ChevronDown, ChevronUp, ClipboardList, MapPinned, Navigation, Play, X } from 'lucide-solid';
+import { createEffect, createSignal, For, Show } from 'solid-js';
 import {
   getAccountDistance,
   getAccountOpportunity,
@@ -14,6 +14,7 @@ import { actions } from '../store';
 
 function CustomerMapSummarySheet() {
   const navigate = useNavigate();
+  const [isExpanded, setIsExpanded] = createSignal(false);
   const account = getSelectedMapAccount;
   const visit = getSelectedMapVisit;
   const opportunity = () => {
@@ -44,6 +45,11 @@ function CustomerMapSummarySheet() {
     actions.beginQuestionnaire(selectedVisit.id, 'manual');
     navigate(`/visits/${selectedVisit.id}/questionnaire`);
   };
+
+  createEffect(() => {
+    account()?.id;
+    setIsExpanded(false);
+  });
 
   return (
     <Show when={account()}>
@@ -109,7 +115,7 @@ function CustomerMapSummarySheet() {
 
           <Show when={opportunity()}>
             {(opp) => (
-              <div class="summary-box">
+              <div class="opportunity-strip">
                 <div class="list-row compact-row">
                   <div>
                     <strong>{opp().name}</strong>
@@ -122,30 +128,37 @@ function CustomerMapSummarySheet() {
             )}
           </Show>
 
-          <div class="summary-two-column">
-            <div>
-              <span class="eyebrow">Follow-ups</span>
-              <For each={tasks().slice(0, 2)} fallback={<p>No open tasks.</p>}>
-                {(task) => (
-                  <p class={isTaskOverdue(task) ? 'task-line overdue' : 'task-line'}>
-                    {task.title}
-                  </p>
-                )}
-              </For>
-            </div>
-            <div>
-              <span class="eyebrow">Recent activity</span>
-              <p>{lastActivity()?.title ?? 'No recent activity'}</p>
-              <span>{lastActivity()?.date ?? selected().lastInteractionDate}</span>
-            </div>
-          </div>
+          <button class="details-toggle" onClick={() => setIsExpanded((value) => !value)}>
+            {isExpanded() ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+            {isExpanded() ? 'Hide details' : 'More details'}
+          </button>
 
-          <Show when={selected().risks.length}>
-            <div class="risk-list">
-              <For each={selected().risks}>
-                {(risk) => <span>{risk}</span>}
-              </For>
+          <Show when={isExpanded()}>
+            <div class="summary-two-column">
+              <div>
+                <span class="eyebrow">Follow-ups</span>
+                <For each={tasks().slice(0, 2)} fallback={<p>No open tasks.</p>}>
+                  {(task) => (
+                    <p class={isTaskOverdue(task) ? 'task-line overdue' : 'task-line'}>
+                      {task.title}
+                    </p>
+                  )}
+                </For>
+              </div>
+              <div>
+                <span class="eyebrow">Recent activity</span>
+                <p>{lastActivity()?.title ?? 'No recent activity'}</p>
+                <span>{lastActivity()?.date ?? selected().lastInteractionDate}</span>
+              </div>
             </div>
+
+            <Show when={selected().risks.length}>
+              <div class="risk-list">
+                <For each={selected().risks}>
+                  {(risk) => <span>{risk}</span>}
+                </For>
+              </div>
+            </Show>
           </Show>
 
           <div class="summary-actions">

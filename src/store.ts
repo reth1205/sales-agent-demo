@@ -58,6 +58,7 @@ type AppState = {
     selectedMapAccountId?: string;
     selectedMapVisitId?: string;
     activeRecommendationId?: string;
+    isCoverageLayerVisible: boolean;
     dismissedRecommendationIds: string[];
     mapDemo: {
       isRunning: boolean;
@@ -155,6 +156,7 @@ export const [state, setState] = createStore<AppState>({
     selectedMapAccountId: undefined,
     selectedMapVisitId: undefined,
     activeRecommendationId: undefined,
+    isCoverageLayerVisible: false,
     dismissedRecommendationIds: load('sales-demo-dismissed-recommendations', [] as string[]),
     mapDemo: initialMapDemoState(),
     selectedManagerAgentId: fieldAgents[0]?.id,
@@ -245,6 +247,9 @@ export const actions = {
     if (state.ui.activeRecommendationId === recommendationId) {
       setState('ui', 'activeRecommendationId', undefined);
     }
+  },
+  toggleCoverageLayer() {
+    setState('ui', 'isCoverageLayerVisible', (value) => !value);
   },
   requestBrowserLocation() {
     if (!navigator.geolocation) {
@@ -551,6 +556,7 @@ export const actions = {
       selectedMapAccountId: undefined,
       selectedMapVisitId: undefined,
       activeRecommendationId: undefined,
+      isCoverageLayerVisible: state.ui.isCoverageLayerVisible,
       dismissedRecommendationIds: state.ui.dismissedRecommendationIds,
       mapDemo: initialMapDemoState(),
       selectedManagerAgentId: state.ui.selectedManagerAgentId,
@@ -597,6 +603,7 @@ export const actions = {
       selectedMapAccountId: undefined,
       selectedMapVisitId: undefined,
       activeRecommendationId: undefined,
+      isCoverageLayerVisible: false,
       dismissedRecommendationIds: [],
       mapDemo: initialMapDemoState(),
       selectedManagerAgentId: fieldAgents[0]?.id,
