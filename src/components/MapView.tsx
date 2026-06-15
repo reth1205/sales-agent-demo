@@ -1,7 +1,7 @@
 import L from 'leaflet';
 import { createEffect, onMount } from 'solid-js';
-import { getVisitAccount } from '../selectors';
-import { state } from '../store';
+import { getAccountVisit, getMapPinType } from '../selectors';
+import { actions, state } from '../store';
 
 function MapView() {
   let container!: HTMLDivElement;
@@ -16,16 +16,19 @@ function MapView() {
     const agentIcon = L.divIcon({ className: 'agent-marker', html: '<span></span>', iconSize: [24, 24] });
     L.marker([current.latitude, current.longitude], { icon: agentIcon }).addTo(layer).bindPopup('Sofia Rivera');
 
-    state.visits.forEach((visit) => {
-      const account = getVisitAccount(visit);
+    state.crm.accounts.forEach((account) => {
+      const visit = getAccountVisit(account.id);
+      const pinType = getMapPinType(account, visit);
+      const isSelected = state.ui.selectedMapAccountId === account.id;
       const icon = L.divIcon({
-        className: `visit-marker ${visit.status.toLowerCase()}`,
-        html: '<span></span>',
-        iconSize: [22, 22],
+        className: `account-marker ${pinType} ${isSelected ? 'selected' : ''}`,
+        html: `<span>${visit ? '' : '<i></i>'}</span>`,
+        iconSize: [26, 26],
       });
-      L.marker([visit.latitude, visit.longitude], { icon })
+      L.marker([account.latitude, account.longitude], { icon })
         .addTo(layer)
-        .bindPopup(`${account?.name ?? 'Customer'} - ${visit.status}`);
+        .on('click', () => actions.selectMapAccount(account.id, visit?.id))
+        .bindPopup(`${account.name} - ${visit?.status ?? account.status}`);
     });
     map.setView([current.latitude, current.longitude], map.getZoom() || 13);
   };
@@ -45,6 +48,9 @@ function MapView() {
     state.location.current.latitude;
     state.location.current.longitude;
     state.visits.map((visit) => `${visit.id}-${visit.status}-${visit.pendingSync}`).join('|');
+    state.crm.accounts.map((account) => `${account.id}-${account.status}-${account.engagementRisk}`).join('|');
+    state.crm.tasks.map((task) => `${task.id}-${task.status}-${task.dueDate}`).join('|');
+    state.ui.selectedMapAccountId;
     updateMarkers();
   });
 

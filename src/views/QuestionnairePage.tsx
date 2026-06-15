@@ -36,7 +36,7 @@ function QuestionnairePage() {
               <span class={`status-badge ${currentVisit().status.toLowerCase()}`}>{currentVisit().status}</span>
               <div>
                 <h2>{account()?.name}</h2>
-                <p>{currentVisit().time} Â· {currentVisit().address}</p>
+                <p>{currentVisit().time} · {currentVisit().address}</p>
               </div>
               <Show when={account()}>
                 {(currentAccount) => <VisitContext account={currentAccount()} />}

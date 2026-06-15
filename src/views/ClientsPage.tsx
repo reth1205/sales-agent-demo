@@ -1,14 +1,18 @@
-import { createSignal, For, Show } from 'solid-js';
+import { createEffect, createSignal, For, Show } from 'solid-js';
 import Header from '../components/Header';
 import { formatCurrency } from '../services';
 import { state } from '../store';
 
 function ClientsPage() {
-  const [selectedId, setSelectedId] = createSignal(state.crm.accounts[0]?.id);
+  const [selectedId, setSelectedId] = createSignal(state.ui.selectedClientId ?? state.ui.selectedMapAccountId ?? state.crm.accounts[0]?.id);
   const selected = () => state.crm.accounts.find((account) => account.id === selectedId()) ?? state.crm.accounts[0];
   const accountContacts = () => state.crm.contacts.filter((contact) => contact.accountId === selected()?.id);
   const accountOpportunity = () => state.crm.opportunities.find((opportunity) => opportunity.accountId === selected()?.id);
   const accountActivities = () => state.crm.activities.filter((activity) => activity.accountId === selected()?.id);
+
+  createEffect(() => {
+    if (state.ui.selectedClientId) setSelectedId(state.ui.selectedClientId);
+  });
 
   return (
     <div class="content-stack">

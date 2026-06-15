@@ -1,4 +1,17 @@
-import type { Account, AccountCoverageMetric, AgentPerformanceSnapshot, FieldAgent, InterviewQuestion, LocationPoint, Opportunity, ReviewSummary, Task } from './types';
+import type {
+  Account,
+  AccountCoverageMetric,
+  AgentPerformanceSnapshot,
+  FieldAgent,
+  InterviewQuestion,
+  LocationPoint,
+  MapDemoStep,
+  NearbyRecommendation,
+  Opportunity,
+  ReviewSummary,
+  ScheduledVisit,
+  Task,
+} from './types';
 
 export const getDistanceMeters = (from: LocationPoint, to: LocationPoint) => {
   const earthRadius = 6371000;
@@ -15,6 +28,13 @@ export const getDistanceMeters = (from: LocationPoint, to: LocationPoint) => {
 
 export const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount);
+
+export const formatDistance = (distanceMeters: number) => {
+  if (distanceMeters < 1000) return `${Math.round(distanceMeters)} m`;
+  return `${(distanceMeters / 1000).toFixed(1)} km`;
+};
+
+export const estimateDriveMinutes = (distanceMeters: number) => Math.max(3, Math.round(distanceMeters / 230));
 
 export const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`;
 
@@ -58,6 +78,101 @@ export const buildCoachingInsight = (agent: FieldAgent, snapshot: AgentPerforman
   return 'Reinforce the current routine and use recent wins as a team example.';
 };
 
+export const isTaskOverdue = (task: Task, today = '2026-06-15') =>
+  task.status === 'Open' && task.dueDate < today;
+
+export const buildAccountInsight = (
+  account: Account,
+  opportunity: Opportunity | undefined,
+  tasks: Task[],
+  distanceMeters: number,
+) => {
+  const overdueTasks = tasks.filter((task) => isTaskOverdue(task));
+  const distance = formatDistance(distanceMeters);
+  if (account.hasEscalation || account.engagementRisk === 'High') {
+    return `${account.name} is ${distance} away and has an active risk signal. Prioritize a quick check-in before the next scheduled meeting.`;
+  }
+  if (overdueTasks.length) {
+    return `${account.name} is ${distance} away with ${overdueTasks.length} overdue follow-up. A short stop could recover momentum.`;
+  }
+  if (opportunity && opportunity.amount >= 75000 && opportunity.stage !== 'Closed Won') {
+    return `${account.name} is nearby with a ${formatCurrency(opportunity.amount)} opportunity in ${opportunity.stage}.`;
+  }
+  if (account.lastInteractionDate && account.lastInteractionDate < '2026-06-01') {
+    return `${account.name} has not had a recent touchpoint. This route gap is a good moment to refresh the relationship.`;
+  }
+  return `${account.name} is a nearby ${account.type ?? account.industry.toLowerCase()} account with a clear next action.`;
+};
+
+export const scoreNearbyAccount = (
+  account: Account,
+  opportunity: Opportunity | undefined,
+  tasks: Task[],
+  distanceMeters: number,
+  hasScheduleGap = true,
+) => {
+  const overdueTasks = tasks.filter((task) => isTaskOverdue(task)).length;
+  const opportunityScore = opportunity && opportunity.stage !== 'Closed Won' ? Math.min(opportunity.amount / 1500, 70) : 0;
+  const distanceScore = Math.max(0, 40 - distanceMeters / 100);
+  const riskScore = account.hasEscalation || account.engagementRisk === 'High' ? 30 : account.engagementRisk === 'Medium' ? 14 : 0;
+  const taskScore = overdueTasks * 24;
+  const gapScore = hasScheduleGap ? 10 : 0;
+  return Math.round(opportunityScore + distanceScore + riskScore + taskScore + gapScore);
+};
+
+export const buildNavigationUrl = (account: Account) => {
+  const query = encodeURIComponent(`${account.latitude},${account.longitude}`);
+  return `https://www.google.com/maps/search/?api=1&query=${query}`;
+};
+
+export const buildRecommendationMessage = (
+  account: Account,
+  opportunity: Opportunity | undefined,
+  tasks: Task[],
+  distanceMeters: number,
+) => {
+  const eta = estimateDriveMinutes(distanceMeters);
+  const overdueTasks = tasks.filter((task) => isTaskOverdue(task));
+  if (account.hasEscalation || account.engagementRisk === 'High') {
+    return `You are ${eta} minutes away from ${account.name}. This account has an active risk signal and needs attention.`;
+  }
+  if (overdueTasks.length) {
+    return `You are ${eta} minutes away from ${account.name}. There is an overdue follow-up waiting.`;
+  }
+  if (opportunity && opportunity.amount >= 75000) {
+    return `You are ${eta} minutes away from ${account.name}. There is an active opportunity worth ${formatCurrency(opportunity.amount)}.`;
+  }
+  return `You have a route gap nearby. ${account.name} is ${eta} minutes away and has a clear next action.`;
+};
+
+export const buildMapDemoSteps = (
+  accounts: Account[],
+  visits: ScheduledVisit[],
+  recommendations: NearbyRecommendation[],
+) => {
+  const preferredAccountIds = ['acct-acme', 'acct-horizon', 'acct-urban-foods', 'acct-pinnacle', 'acct-globex'];
+  const scheduled = new Set(visits.map((visit) => visit.accountId));
+  const ordered = preferredAccountIds
+    .map((accountId) => accounts.find((account) => account.id === accountId))
+    .filter((account): account is Account => Boolean(account));
+
+  return ordered.map<MapDemoStep>((account, index) => {
+    const recommendation = recommendations.find((item) => item.accountId === account.id);
+    const hasVisit = scheduled.has(account.id);
+    return {
+      id: `map-demo-${index + 1}`,
+      label: hasVisit ? 'Scheduled stop' : recommendation ? 'Nearby discovery' : 'Account context',
+      accountId: account.id,
+      recommendationId: recommendation?.id ?? (!hasVisit ? `nearby-${account.id}` : undefined),
+      location: {
+        latitude: account.latitude,
+        longitude: account.longitude,
+      },
+      message: recommendation?.message ?? `Open ${account.name} from the map and review the next best action.`,
+    };
+  });
+};
+
 export const getActiveQuestions = (questions: InterviewQuestion[]) =>
   [...questions].filter((question) => question.isActive).sort((a, b) => a.order - b.order);
 
@@ -86,6 +201,8 @@ export const interpretVisitAnswers = (
       dueDate: '2026-05-22',
       owner: 'Sofia Rivera',
       status: 'Open',
+      priority: 'Medium',
+      source: 'questionnaire',
     });
   }
 

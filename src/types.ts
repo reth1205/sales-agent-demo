@@ -25,6 +25,13 @@ export type Account = {
   summary: string;
   status: string;
   risks: string[];
+  type?: string;
+  tier?: 'Strategic' | 'Enterprise' | 'Growth' | 'Core';
+  lastInteractionDate?: string;
+  engagementRisk?: 'Low' | 'Medium' | 'High';
+  nextAction?: string;
+  isNearbyCandidate?: boolean;
+  hasEscalation?: boolean;
 };
 
 export type Contact = {
@@ -76,6 +83,29 @@ export type Task = {
   dueDate: string;
   owner: string;
   status: 'Open' | 'Completed';
+  priority?: 'Low' | 'Medium' | 'High';
+  source?: 'demo' | 'questionnaire';
+};
+
+export type MapPinType = 'scheduledVisit' | 'activeAccount' | 'opportunity' | 'risk' | 'completed';
+
+export type NearbyRecommendation = {
+  id: string;
+  accountId: string;
+  reason: 'highValue' | 'overdueTask' | 'inactiveAccount' | 'scheduleGap' | 'risk';
+  message: string;
+  score: number;
+  distanceMeters: number;
+  etaMinutes: number;
+};
+
+export type MapDemoStep = {
+  id: string;
+  label: string;
+  accountId: string;
+  recommendationId?: string;
+  location: LocationPoint;
+  message: string;
 };
 
 export type InterviewQuestion = {

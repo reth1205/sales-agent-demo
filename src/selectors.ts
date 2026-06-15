@@ -1,6 +1,15 @@
 import { state } from './store';
-import { calculateCompositePerformanceScore, calculateCoverageRisk, calculateTaskCompletionRate } from './services';
-import type { AgentStatus, ScheduledVisit } from './types';
+import {
+  buildRecommendationMessage,
+  calculateCompositePerformanceScore,
+  calculateCoverageRisk,
+  calculateTaskCompletionRate,
+  estimateDriveMinutes,
+  getDistanceMeters,
+  isTaskOverdue,
+  scoreNearbyAccount,
+} from './services';
+import type { Account, AgentStatus, MapPinType, NearbyRecommendation, ScheduledVisit } from './types';
 
 export const getAccount = (accountId: string) => state.crm.accounts.find((account) => account.id === accountId);
 
@@ -8,6 +17,92 @@ export const getVisitAccount = (visit: ScheduledVisit) => getAccount(visit.accou
 
 export const getOpenOpportunity = (accountId: string) =>
   state.crm.opportunities.find((opportunity) => opportunity.accountId === accountId);
+
+export const getAccountContacts = (accountId: string) =>
+  state.crm.contacts.filter((contact) => contact.accountId === accountId);
+
+export const getAccountOpportunity = (accountId: string) =>
+  state.crm.opportunities.find((opportunity) => opportunity.accountId === accountId);
+
+export const getAccountActivities = (accountId: string) =>
+  state.crm.activities
+    .filter((activity) => activity.accountId === accountId)
+    .sort((left, right) => right.date.localeCompare(left.date));
+
+export const getAccountTasks = (accountId: string) =>
+  state.crm.tasks.filter((task) => task.accountId === accountId);
+
+export const getLastActivity = (accountId: string) => getAccountActivities(accountId)[0];
+
+export const getAccountDistance = (account: Account) =>
+  getDistanceMeters(state.location.current, { latitude: account.latitude, longitude: account.longitude });
+
+export const getNextScheduledVisit = () =>
+  state.visits.find((visit) => visit.status !== 'Completed') ?? state.visits[0];
+
+export const getAccountVisit = (accountId: string) =>
+  state.visits.find((visit) => visit.accountId === accountId);
+
+export const getMapPinType = (
+  account: Account,
+  relatedVisit = getAccountVisit(account.id),
+  opportunity = getAccountOpportunity(account.id),
+  tasks = getAccountTasks(account.id),
+): MapPinType => {
+  if (relatedVisit?.status === 'Completed') return 'completed';
+  if (relatedVisit) return 'scheduledVisit';
+  if (account.hasEscalation || account.engagementRisk === 'High' || tasks.some((task) => isTaskOverdue(task))) return 'risk';
+  if (opportunity && opportunity.stage !== 'Closed Won' && opportunity.amount >= 50000) return 'opportunity';
+  return 'activeAccount';
+};
+
+export const getNearbyAccounts = (radiusMeters = 2500) =>
+  state.crm.accounts
+    .filter((account) => account.isNearbyCandidate)
+    .map((account) => ({ account, distanceMeters: getAccountDistance(account) }))
+    .filter((item) => item.distanceMeters <= radiusMeters)
+    .sort((left, right) => left.distanceMeters - right.distanceMeters);
+
+export const getNearbyRecommendations = () =>
+  getNearbyAccounts(3200)
+    .map(({ account, distanceMeters }) => {
+      const opportunity = getAccountOpportunity(account.id);
+      const tasks = getAccountTasks(account.id);
+      const score = scoreNearbyAccount(account, opportunity, tasks, distanceMeters, true);
+      const overdueTask = tasks.some((task) => isTaskOverdue(task));
+      const reason: NearbyRecommendation['reason'] =
+        account.hasEscalation || account.engagementRisk === 'High'
+          ? 'risk'
+          : overdueTask
+            ? 'overdueTask'
+            : opportunity && opportunity.amount >= 75000
+              ? 'highValue'
+              : account.lastInteractionDate && account.lastInteractionDate < '2026-06-01'
+                ? 'inactiveAccount'
+                : 'scheduleGap';
+      return {
+        id: `nearby-${account.id}`,
+        accountId: account.id,
+        reason,
+        message: buildRecommendationMessage(account, opportunity, tasks, distanceMeters),
+        score,
+        distanceMeters,
+        etaMinutes: estimateDriveMinutes(distanceMeters),
+      };
+    })
+    .filter((recommendation) => recommendation.score >= 45 && !state.ui.dismissedRecommendationIds.includes(recommendation.id))
+    .sort((left, right) => right.score - left.score);
+
+export const getActiveRecommendation = () => {
+  const recommendations = getNearbyRecommendations();
+  return recommendations.find((recommendation) => recommendation.id === state.ui.activeRecommendationId) ?? recommendations[0];
+};
+
+export const getSelectedMapAccount = () =>
+  state.ui.selectedMapAccountId ? getAccount(state.ui.selectedMapAccountId) : undefined;
+
+export const getSelectedMapVisit = () =>
+  state.ui.selectedMapVisitId ? state.visits.find((visit) => visit.id === state.ui.selectedMapVisitId) : undefined;
 
 export const getAgentPerformance = (agentId: string) =>
   state.manager.performance.find((snapshot) => snapshot.agentId === agentId);

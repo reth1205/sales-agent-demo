@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, Plus, RefreshCcw, Trash2 } from 'lucide-solid';
-import { For } from 'solid-js';
+import { createSignal, For, Show } from 'solid-js';
 import { actions, state } from '../store';
 import { getActiveQuestions } from '../services';
 
@@ -44,6 +44,11 @@ export function InterviewQuestionsSettings() {
 
 export function DemoCleanupSettings() {
   const completedVisits = () => state.visits.filter((visit) => visit.status === 'Completed').length;
+  const [confirmReset, setConfirmReset] = createSignal(false);
+  const resetApp = () => {
+    actions.resetApp();
+    setConfirmReset(false);
+  };
 
   return (
     <section class="panel">
@@ -69,6 +74,29 @@ export function DemoCleanupSettings() {
           <RefreshCcw size={18} />
           Reset demo
         </button>
+      </div>
+      <div class="danger-zone">
+        <div>
+          <span class="eyebrow">Full reset</span>
+          <p>Restore visits, tasks, queue, progress, questions, settings, map demo state, and local app data.</p>
+        </div>
+        <Show
+          when={confirmReset()}
+          fallback={(
+            <button class="secondary-action danger wide" onClick={() => setConfirmReset(true)}>
+              <RefreshCcw size={18} />
+              Reset app
+            </button>
+          )}
+        >
+          <div class="confirm-reset-actions">
+            <button class="secondary-action" onClick={() => setConfirmReset(false)}>Cancel</button>
+            <button class="secondary-action danger" onClick={resetApp}>
+              <Trash2 size={18} />
+              Confirm reset
+            </button>
+          </div>
+        </Show>
       </div>
     </section>
   );

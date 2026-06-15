@@ -10,13 +10,14 @@ import {
   demoLocation,
   fieldAgents,
   historicalTrends,
+  initialTasks,
   managerInsights,
   opportunities,
   territoryMetrics,
   visits,
 } from './data';
-import { getActiveQuestions, getDistanceMeters, interpretVisitAnswers, makeId } from './services';
-import type { InterviewQuestion, LocationPoint, OfflineQueueItem, ProgressState, ReportingTab, ReviewSummary, Task } from './types';
+import { buildMapDemoSteps, buildNavigationUrl, getActiveQuestions, getDistanceMeters, interpretVisitAnswers, makeId } from './services';
+import type { InterviewQuestion, LocationPoint, MapDemoStep, OfflineQueueItem, ProgressState, ReportingTab, ReviewSummary, Task } from './types';
 
 type AppState = {
   session: {
@@ -53,6 +54,19 @@ type AppState = {
   ui: {
     activeVisitPromptId?: string;
     toast?: string;
+    selectedClientId?: string;
+    selectedMapAccountId?: string;
+    selectedMapVisitId?: string;
+    activeRecommendationId?: string;
+    dismissedRecommendationIds: string[];
+    mapDemo: {
+      isRunning: boolean;
+      isPaused: boolean;
+      isMoving: boolean;
+      movementProgress: number;
+      currentStepIndex: number;
+      steps: MapDemoStep[];
+    };
     selectedManagerAgentId?: string;
     reportingTab: ReportingTab;
     dismissedManagerInsightIds: string[];
@@ -81,6 +95,34 @@ const save = (key: string, value: unknown) => {
 };
 
 const initialProgress: ProgressState = { percent: 0, milestones: [] };
+const storageKeys = [
+  'sales-demo-visits',
+  'sales-demo-progress',
+  'sales-demo-questions',
+  'sales-demo-queue',
+  'sales-demo-tasks',
+  'sales-demo-offline',
+  'sales-demo-reporting-tab',
+  'sales-demo-dismissed-manager-insights',
+  'sales-demo-dismissed-recommendations',
+];
+
+const initialMapDemoState = () => ({
+  isRunning: false,
+  isPaused: false,
+  isMoving: false,
+  movementProgress: 0,
+  currentStepIndex: 0,
+  steps: [] as MapDemoStep[],
+});
+
+let mapDemoTimer: ReturnType<typeof window.setInterval> | undefined;
+
+const clearMapDemoTimer = () => {
+  if (!mapDemoTimer) return;
+  window.clearInterval(mapDemoTimer);
+  mapDemoTimer = undefined;
+};
 
 export const [state, setState] = createStore<AppState>({
   session: load('sales-demo-session', { isAuthenticated: false }),
@@ -91,7 +133,7 @@ export const [state, setState] = createStore<AppState>({
     contacts: [...contacts],
     opportunities: [...opportunities],
     activities: [...activities],
-    tasks: load('sales-demo-tasks', [] as Task[]),
+    tasks: load('sales-demo-tasks', initialTasks),
   },
   manager: {
     agents: [...fieldAgents],
@@ -109,6 +151,12 @@ export const [state, setState] = createStore<AppState>({
   progress: load('sales-demo-progress', initialProgress),
   queue: load('sales-demo-queue', [] as OfflineQueueItem[]),
   ui: {
+    selectedClientId: undefined,
+    selectedMapAccountId: undefined,
+    selectedMapVisitId: undefined,
+    activeRecommendationId: undefined,
+    dismissedRecommendationIds: load('sales-demo-dismissed-recommendations', [] as string[]),
+    mapDemo: initialMapDemoState(),
     selectedManagerAgentId: fieldAgents[0]?.id,
     reportingTab: load('sales-demo-reporting-tab', 'overview' as ReportingTab),
     dismissedManagerInsightIds: load('sales-demo-dismissed-manager-insights', [] as string[]),
@@ -128,6 +176,7 @@ const persistQueue = () => save('sales-demo-queue', state.queue);
 const persistTasks = () => save('sales-demo-tasks', state.crm.tasks);
 const persistReportingTab = () => save('sales-demo-reporting-tab', state.ui.reportingTab);
 const persistDismissedManagerInsights = () => save('sales-demo-dismissed-manager-insights', state.ui.dismissedManagerInsightIds);
+const persistDismissedRecommendations = () => save('sales-demo-dismissed-recommendations', state.ui.dismissedRecommendationIds);
 
 const addProgress = (amount: number) => {
   setState('progress', produce((progress) => {
@@ -172,6 +221,31 @@ export const actions = {
     setState('ui', 'dismissedManagerInsightIds', state.ui.dismissedManagerInsightIds.length, insightId);
     persistDismissedManagerInsights();
   },
+  selectClient(accountId?: string) {
+    setState('ui', 'selectedClientId', accountId);
+  },
+  selectMapAccount(accountId: string, visitId?: string) {
+    setState('ui', 'selectedMapAccountId', accountId);
+    setState('ui', 'selectedMapVisitId', visitId);
+  },
+  selectMapVisit(visitId: string) {
+    const visit = state.visits.find((item) => item.id === visitId);
+    if (!visit) return;
+    actions.selectMapAccount(visit.accountId, visit.id);
+  },
+  clearMapSelection() {
+    setState('ui', 'selectedMapAccountId', undefined);
+    setState('ui', 'selectedMapVisitId', undefined);
+  },
+  dismissRecommendation(recommendationId: string) {
+    if (!state.ui.dismissedRecommendationIds.includes(recommendationId)) {
+      setState('ui', 'dismissedRecommendationIds', state.ui.dismissedRecommendationIds.length, recommendationId);
+      persistDismissedRecommendations();
+    }
+    if (state.ui.activeRecommendationId === recommendationId) {
+      setState('ui', 'activeRecommendationId', undefined);
+    }
+  },
   requestBrowserLocation() {
     if (!navigator.geolocation) {
       actions.useDemoLocation();
@@ -209,6 +283,115 @@ export const actions = {
       isDemo: true,
     });
     actions.checkGeofences();
+  },
+  focusAccountLocation(accountId: string) {
+    const account = state.crm.accounts.find((item) => item.id === accountId);
+    if (!account) return;
+    const visit = state.visits.find((item) => item.accountId === account.id);
+    setState('location', {
+      current: { latitude: account.latitude - 0.001, longitude: account.longitude + 0.001 },
+      permission: 'granted',
+      isDemo: true,
+    });
+    actions.selectMapAccount(account.id, visit?.id);
+    actions.checkGeofences();
+  },
+  openNavigation(accountId: string) {
+    const account = state.crm.accounts.find((item) => item.id === accountId);
+    if (!account) return;
+    window.open(buildNavigationUrl(account), '_blank', 'noopener,noreferrer');
+  },
+  startMapDemo() {
+    clearMapDemoTimer();
+    const steps = buildMapDemoSteps(state.crm.accounts, state.visits, []);
+    if (!steps.length) return;
+    setState('ui', 'mapDemo', {
+      isRunning: true,
+      isPaused: false,
+      isMoving: false,
+      movementProgress: 0,
+      currentStepIndex: 0,
+      steps,
+    });
+    actions.animateMapDemoStep(0);
+    actions.showToast('Map demo started.');
+  },
+  applyMapDemoStep(stepIndex: number) {
+    const step = state.ui.mapDemo.steps[stepIndex];
+    if (!step) return;
+    const visit = state.visits.find((item) => item.accountId === step.accountId);
+    setState('location', {
+      current: step.location,
+      permission: 'granted',
+      isDemo: true,
+    });
+    setState('ui', 'selectedMapAccountId', step.accountId);
+    setState('ui', 'selectedMapVisitId', visit?.id);
+    setState('ui', 'activeRecommendationId', step.recommendationId);
+    setState('ui', 'mapDemo', 'isMoving', false);
+    setState('ui', 'mapDemo', 'movementProgress', 100);
+  },
+  animateMapDemoStep(stepIndex: number) {
+    clearMapDemoTimer();
+    const step = state.ui.mapDemo.steps[stepIndex];
+    if (!step) return;
+    const start = { ...state.location.current };
+    const end = step.location;
+    const frames = 22;
+    let frame = 0;
+
+    setState('ui', 'selectedMapAccountId', undefined);
+    setState('ui', 'selectedMapVisitId', undefined);
+    setState('ui', 'activeRecommendationId', undefined);
+    setState('ui', 'mapDemo', 'isMoving', true);
+    setState('ui', 'mapDemo', 'movementProgress', 0);
+    setState('location', { current: start, permission: 'granted', isDemo: true });
+
+    mapDemoTimer = window.setInterval(() => {
+      if (!state.ui.mapDemo.isRunning) {
+        clearMapDemoTimer();
+        return;
+      }
+      if (state.ui.mapDemo.isPaused) return;
+
+      frame += 1;
+      const progress = Math.min(frame / frames, 1);
+      const eased = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+      setState('location', {
+        current: {
+          latitude: start.latitude + (end.latitude - start.latitude) * eased,
+          longitude: start.longitude + (end.longitude - start.longitude) * eased,
+        },
+        permission: 'granted',
+        isDemo: true,
+      });
+      setState('ui', 'mapDemo', 'movementProgress', Math.round(progress * 100));
+
+      if (progress >= 1) {
+        clearMapDemoTimer();
+        actions.applyMapDemoStep(stepIndex);
+        actions.checkGeofences();
+      }
+    }, 110);
+  },
+  advanceMapDemoStep() {
+    if (!state.ui.mapDemo.isRunning) {
+      actions.startMapDemo();
+      return;
+    }
+    const nextIndex = Math.min(state.ui.mapDemo.currentStepIndex + 1, state.ui.mapDemo.steps.length - 1);
+    setState('ui', 'mapDemo', 'currentStepIndex', nextIndex);
+    setState('ui', 'mapDemo', 'isPaused', false);
+    actions.animateMapDemoStep(nextIndex);
+  },
+  pauseMapDemo() {
+    if (!state.ui.mapDemo.isRunning) return;
+    setState('ui', 'mapDemo', 'isPaused', (value) => !value);
+  },
+  stopMapDemo() {
+    clearMapDemoTimer();
+    setState('ui', 'mapDemo', initialMapDemoState());
+    setState('ui', 'activeRecommendationId', undefined);
   },
   checkGeofences() {
     const visit = state.visits.find((item) => {
@@ -356,13 +539,20 @@ export const actions = {
     actions.showToast('Generated tasks cleared.');
   },
   resetDemoActivity() {
+    clearMapDemoTimer();
     setState('visits', visits.map((visit) => ({ ...visit })));
     setState('progress', { ...initialProgress, milestones: [] });
     setState('queue', []);
-    setState('crm', 'tasks', []);
+    setState('crm', 'tasks', initialTasks.map((task) => ({ ...task })));
     setState('ui', {
       activeVisitPromptId: undefined,
       toast: undefined,
+      selectedClientId: undefined,
+      selectedMapAccountId: undefined,
+      selectedMapVisitId: undefined,
+      activeRecommendationId: undefined,
+      dismissedRecommendationIds: state.ui.dismissedRecommendationIds,
+      mapDemo: initialMapDemoState(),
       selectedManagerAgentId: state.ui.selectedManagerAgentId,
       reportingTab: state.ui.reportingTab,
       dismissedManagerInsightIds: state.ui.dismissedManagerInsightIds,
@@ -380,6 +570,48 @@ export const actions = {
     persistQueue();
     persistTasks();
     actions.showToast('Demo activity reset.');
+  },
+  resetApp() {
+    clearMapDemoTimer();
+    storageKeys.forEach((key) => localStorage.removeItem(key));
+    setState('location', { current: demoLocation, permission: 'idle', isDemo: true });
+    setState('crm', {
+      agent: demoAgent,
+      accounts: accounts.map((account) => ({ ...account, risks: [...account.risks] })),
+      contacts: contacts.map((contact) => ({ ...contact })),
+      opportunities: opportunities.map((opportunity) => ({ ...opportunity })),
+      activities: activities.map((activity) => ({ ...activity })),
+      tasks: initialTasks.map((task) => ({ ...task })),
+    });
+    setState('visits', visits.map((visit) => ({ ...visit })));
+    setState('settings', {
+      questions: defaultInterviewQuestions.map((question) => ({ ...question })),
+      offlineMode: false,
+    });
+    setState('progress', { ...initialProgress, milestones: [] });
+    setState('queue', []);
+    setState('ui', {
+      activeVisitPromptId: undefined,
+      toast: undefined,
+      selectedClientId: undefined,
+      selectedMapAccountId: undefined,
+      selectedMapVisitId: undefined,
+      activeRecommendationId: undefined,
+      dismissedRecommendationIds: [],
+      mapDemo: initialMapDemoState(),
+      selectedManagerAgentId: fieldAgents[0]?.id,
+      reportingTab: 'overview',
+      dismissedManagerInsightIds: [],
+    });
+    setState('questionnaire', {
+      visitId: undefined,
+      mode: 'manual',
+      snapshot: [],
+      answers: {},
+      review: undefined,
+      currentQuestionIndex: 0,
+    });
+    actions.showToast('App reset complete.');
   },
   toggleOfflineMode() {
     setState('settings', 'offlineMode', (value) => !value);
