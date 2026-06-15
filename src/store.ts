@@ -1,7 +1,22 @@
 import { createStore, produce } from 'solid-js/store';
-import { accounts, activities, contacts, defaultInterviewQuestions, demoAgent, demoLocation, opportunities, visits } from './data';
+import {
+  accountCoverageMetrics,
+  accounts,
+  activities,
+  agentPerformanceSnapshots,
+  contacts,
+  defaultInterviewQuestions,
+  demoAgent,
+  demoLocation,
+  fieldAgents,
+  historicalTrends,
+  managerInsights,
+  opportunities,
+  territoryMetrics,
+  visits,
+} from './data';
 import { getActiveQuestions, getDistanceMeters, interpretVisitAnswers, makeId } from './services';
-import type { InterviewQuestion, LocationPoint, OfflineQueueItem, ProgressState, ReviewSummary, Task } from './types';
+import type { InterviewQuestion, LocationPoint, OfflineQueueItem, ProgressState, ReportingTab, ReviewSummary, Task } from './types';
 
 type AppState = {
   session: {
@@ -20,6 +35,14 @@ type AppState = {
     activities: typeof activities;
     tasks: Task[];
   };
+  manager: {
+    agents: typeof fieldAgents;
+    performance: typeof agentPerformanceSnapshots;
+    insights: typeof managerInsights;
+    trends: typeof historicalTrends;
+    accountCoverage: typeof accountCoverageMetrics;
+    territories: typeof territoryMetrics;
+  };
   visits: typeof visits;
   settings: {
     questions: InterviewQuestion[];
@@ -30,6 +53,9 @@ type AppState = {
   ui: {
     activeVisitPromptId?: string;
     toast?: string;
+    selectedManagerAgentId?: string;
+    reportingTab: ReportingTab;
+    dismissedManagerInsightIds: string[];
   };
   questionnaire: {
     visitId?: string;
@@ -67,6 +93,14 @@ export const [state, setState] = createStore<AppState>({
     activities: [...activities],
     tasks: load('sales-demo-tasks', [] as Task[]),
   },
+  manager: {
+    agents: [...fieldAgents],
+    performance: [...agentPerformanceSnapshots],
+    insights: [...managerInsights],
+    trends: [...historicalTrends],
+    accountCoverage: [...accountCoverageMetrics],
+    territories: [...territoryMetrics],
+  },
   visits: load('sales-demo-visits', visits),
   settings: {
     questions: load('sales-demo-questions', defaultInterviewQuestions),
@@ -74,7 +108,11 @@ export const [state, setState] = createStore<AppState>({
   },
   progress: load('sales-demo-progress', initialProgress),
   queue: load('sales-demo-queue', [] as OfflineQueueItem[]),
-  ui: {},
+  ui: {
+    selectedManagerAgentId: fieldAgents[0]?.id,
+    reportingTab: load('sales-demo-reporting-tab', 'overview' as ReportingTab),
+    dismissedManagerInsightIds: load('sales-demo-dismissed-manager-insights', [] as string[]),
+  },
   questionnaire: {
     mode: 'manual',
     snapshot: [],
@@ -88,6 +126,8 @@ const persistProgress = () => save('sales-demo-progress', state.progress);
 const persistQuestions = () => save('sales-demo-questions', state.settings.questions);
 const persistQueue = () => save('sales-demo-queue', state.queue);
 const persistTasks = () => save('sales-demo-tasks', state.crm.tasks);
+const persistReportingTab = () => save('sales-demo-reporting-tab', state.ui.reportingTab);
+const persistDismissedManagerInsights = () => save('sales-demo-dismissed-manager-insights', state.ui.dismissedManagerInsightIds);
 
 const addProgress = (amount: number) => {
   setState('progress', produce((progress) => {
@@ -119,6 +159,18 @@ export const actions = {
   showToast(message: string) {
     setState('ui', 'toast', message);
     window.setTimeout(() => setState('ui', 'toast', undefined), 2600);
+  },
+  selectManagerAgent(agentId?: string) {
+    setState('ui', 'selectedManagerAgentId', agentId);
+  },
+  setReportingTab(tab: ReportingTab) {
+    setState('ui', 'reportingTab', tab);
+    persistReportingTab();
+  },
+  dismissManagerInsight(insightId: string) {
+    if (state.ui.dismissedManagerInsightIds.includes(insightId)) return;
+    setState('ui', 'dismissedManagerInsightIds', state.ui.dismissedManagerInsightIds.length, insightId);
+    persistDismissedManagerInsights();
   },
   requestBrowserLocation() {
     if (!navigator.geolocation) {
@@ -311,6 +363,9 @@ export const actions = {
     setState('ui', {
       activeVisitPromptId: undefined,
       toast: undefined,
+      selectedManagerAgentId: state.ui.selectedManagerAgentId,
+      reportingTab: state.ui.reportingTab,
+      dismissedManagerInsightIds: state.ui.dismissedManagerInsightIds,
     });
     setState('questionnaire', {
       visitId: undefined,

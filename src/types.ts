@@ -127,3 +127,69 @@ export type OfflineQueueItem = {
   visitId: string;
   summary: ReviewSummary;
 };
+
+export type AgentStatus = 'OnSchedule' | 'AtRisk' | 'Missed' | 'InMeeting' | 'Offline';
+
+export type FieldAgent = Agent & {
+  avatarInitials: string;
+  status: AgentStatus;
+  latitude: number;
+  longitude: number;
+  currentCustomer?: string;
+  completionPercent: number;
+  crmCompletionRate: number;
+  routeEfficiency: number;
+  onTimeArrivalRate: number;
+  productiveHours: number;
+};
+
+export type AgentPerformanceSnapshot = {
+  agentId: string;
+  visitsCompleted: number;
+  visitsScheduled: number;
+  opportunityUpdates: number;
+  followUpTasksCompleted: number;
+  followUpTasksOpen: number;
+  overdueTasks: number;
+  averageResponseHours: number;
+  crmUpdatesSubmitted: number;
+  missedVisits: number;
+};
+
+export type ManagerInsight = {
+  id: string;
+  agentId?: string;
+  accountId?: string;
+  severity: 'info' | 'warning' | 'critical';
+  category: 'coaching' | 'risk' | 'productivity' | 'coverage' | 'crm';
+  title: string;
+  message: string;
+  recommendedAction: string;
+};
+
+export type HistoricalTrendPoint = {
+  date: string;
+  teamCompletion: number;
+  crmCompletion: number;
+  visitsCompleted: number;
+  tasksCompleted: number;
+};
+
+export type AccountCoverageMetric = {
+  accountId: string;
+  lastVisitDaysAgo: number;
+  visitsThisWeek: number;
+  engagementFrequency: 'High' | 'Medium' | 'Low';
+  riskScore: number;
+  pipelineHealth: 'Healthy' | 'Watch' | 'AtRisk';
+  pipelineAmount: number;
+};
+
+export type TerritoryMetric = {
+  territory: string;
+  visitsCompleted: number;
+  travelRatio: number;
+  efficiency: number;
+};
+
+export type ReportingTab = 'overview' | 'team' | 'accounts' | 'insights';

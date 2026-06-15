@@ -1,4 +1,4 @@
-import type { Account, InterviewQuestion, LocationPoint, Opportunity, ReviewSummary, Task } from './types';
+import type { Account, AccountCoverageMetric, AgentPerformanceSnapshot, FieldAgent, InterviewQuestion, LocationPoint, Opportunity, ReviewSummary, Task } from './types';
 
 export const getDistanceMeters = (from: LocationPoint, to: LocationPoint) => {
   const earthRadius = 6371000;
@@ -17,6 +17,46 @@ export const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount);
 
 export const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`;
+
+export const formatPercent = (value: number) => `${Math.round(value)}%`;
+
+export const formatHours = (value: number) => `${value.toFixed(1)}h`;
+
+export const calculateTaskCompletionRate = (snapshot: AgentPerformanceSnapshot) => {
+  const total = snapshot.followUpTasksCompleted + snapshot.followUpTasksOpen;
+  return total ? Math.round((snapshot.followUpTasksCompleted / total) * 100) : 100;
+};
+
+export const calculateScheduleAdherence = (snapshot: AgentPerformanceSnapshot) => {
+  if (!snapshot.visitsScheduled) return 100;
+  return Math.max(0, Math.round(((snapshot.visitsScheduled - snapshot.missedVisits) / snapshot.visitsScheduled) * 100));
+};
+
+export const calculateCompositePerformanceScore = (agent: FieldAgent, snapshot: AgentPerformanceSnapshot) => {
+  const taskCompletion = calculateTaskCompletionRate(snapshot);
+  const scheduleAdherence = calculateScheduleAdherence(snapshot);
+  return Math.round(
+    agent.completionPercent * 0.3 +
+      agent.crmCompletionRate * 0.25 +
+      agent.routeEfficiency * 0.2 +
+      taskCompletion * 0.15 +
+      scheduleAdherence * 0.1,
+  );
+};
+
+export const calculateCoverageRisk = (metric: AccountCoverageMetric) => {
+  const inactivityRisk = Math.min(metric.lastVisitDaysAgo * 4, 50);
+  const engagementRisk = metric.engagementFrequency === 'Low' ? 24 : metric.engagementFrequency === 'Medium' ? 12 : 0;
+  const pipelineRisk = metric.pipelineHealth === 'AtRisk' ? 26 : metric.pipelineHealth === 'Watch' ? 14 : 0;
+  return Math.min(100, Math.round((metric.riskScore + inactivityRisk + engagementRisk + pipelineRisk) / 2));
+};
+
+export const buildCoachingInsight = (agent: FieldAgent, snapshot: AgentPerformanceSnapshot) => {
+  if (snapshot.missedVisits > 0) return 'Review route pacing and remove low-value stops before the afternoon window.';
+  if (agent.crmCompletionRate < 75) return 'Coach on same-day CRM notes and require opportunity updates after each visit.';
+  if (agent.routeEfficiency < 75) return 'Compare the planned route against actual travel time before assigning new visits.';
+  return 'Reinforce the current routine and use recent wins as a team example.';
+};
 
 export const getActiveQuestions = (questions: InterviewQuestion[]) =>
   [...questions].filter((question) => question.isActive).sort((a, b) => a.order - b.order);

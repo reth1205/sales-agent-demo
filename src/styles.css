@@ -737,6 +737,424 @@ textarea {
   color: #c25930;
 }
 
+.reporting-command-center {
+  gap: 12px;
+}
+
+.reporting-tabs {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  position: sticky;
+  top: -18px;
+  z-index: 6;
+}
+
+.reporting-tabs button {
+  min-width: 0;
+  padding-inline: 6px;
+  font-size: 12px;
+}
+
+.manager-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.manager-kpi {
+  min-height: 82px;
+  display: grid;
+  align-content: space-between;
+  gap: 4px;
+  padding: 12px;
+  color: #173f49;
+  background: #fff;
+  border: 1px solid rgba(29, 48, 63, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(34, 44, 54, 0.07);
+}
+
+.manager-kpi svg {
+  color: #0f6c7a;
+}
+
+.manager-kpi span {
+  font-size: 12px;
+}
+
+.manager-kpi strong {
+  color: #15202b;
+  font-size: 19px;
+  line-height: 1.1;
+}
+
+.wide-kpi {
+  grid-column: 1 / -1;
+  min-height: 68px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  align-content: center;
+}
+
+.team-map-panel {
+  gap: 12px;
+}
+
+.team-map-canvas {
+  height: 238px;
+  overflow: hidden;
+  border: 1px solid #dbe3e8;
+  border-radius: 8px;
+  background: #dfe8ed;
+}
+
+.team-agent-marker {
+  display: grid;
+  place-items: center;
+}
+
+.team-agent-marker span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 8px 20px rgba(34, 44, 54, 0.32);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.team-agent-marker.selected span {
+  outline: 3px solid rgba(15, 108, 122, 0.28);
+}
+
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.map-legend span,
+.trend-legend span,
+.coverage-meta span,
+.inline-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-legend span,
+.trend-legend span {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.map-legend i,
+.trend-legend i {
+  width: 9px;
+  height: 9px;
+  display: inline-block;
+  border-radius: 50%;
+}
+
+.agent-list {
+  display: grid;
+  gap: 10px;
+}
+
+.agent-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px;
+  text-align: left;
+  background: #f0f5f7;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.agent-row.selected {
+  border-color: rgba(15, 108, 122, 0.35);
+  background: #e6f1f3;
+}
+
+.agent-avatar {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: #0f6c7a;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.agent-row-body {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.agent-row-header,
+.coverage-row-header,
+.insight-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.agent-row-header strong,
+.coverage-row-header strong,
+.insight-card-header strong {
+  color: #15202b;
+}
+
+.agent-row-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.agent-row-metrics span,
+.coverage-meta span {
+  font-size: 11px;
+}
+
+.bar-line {
+  height: 7px;
+  overflow: hidden;
+  background: #d6e0e6;
+  border-radius: 999px;
+}
+
+.bar-line i {
+  display: block;
+  height: 100%;
+  background: #0f6c7a;
+  border-radius: inherit;
+}
+
+.agent-drilldown {
+  border-color: rgba(15, 108, 122, 0.2);
+}
+
+.agent-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.timeline-stack,
+.coverage-list,
+.insight-list {
+  display: grid;
+  gap: 10px;
+}
+
+.timeline-item {
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+}
+
+.timeline-item svg,
+.inline-icon svg {
+  color: #0f6c7a;
+}
+
+.coaching-box,
+.task-summary,
+.recommended-action {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  background: #fff7ed;
+  border: 1px solid #f3d5bf;
+  border-radius: 8px;
+}
+
+.coaching-box p,
+.top-alert p,
+.insight-card p {
+  color: #34444f;
+}
+
+.account-coverage-panel {
+  gap: 14px;
+}
+
+.coverage-row,
+.insight-card,
+.empty-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: #f0f5f7;
+  border-radius: 8px;
+}
+
+.coverage-row-header > div,
+.insight-card-header > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.risk-pill {
+  min-width: 38px;
+  display: inline-grid;
+  place-items: center;
+  padding: 5px 8px;
+  color: #1d613a;
+  background: #dff2e7;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.risk-pill.watch {
+  color: #82620d;
+  background: #fff1c7;
+}
+
+.risk-pill.high {
+  color: #9d2f24;
+  background: #f8e7e2;
+}
+
+.coverage-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.territory-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.territory-grid div {
+  display: grid;
+  gap: 2px;
+  padding: 10px;
+  background: #eef4f1;
+  border-radius: 8px;
+}
+
+.territory-grid strong {
+  font-size: 13px;
+}
+
+.territory-grid span {
+  font-size: 11px;
+}
+
+.trend-chart {
+  height: 150px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  align-items: end;
+  gap: 8px;
+  padding-top: 6px;
+}
+
+.trend-column {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.trend-column span {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.trend-bars {
+  height: 118px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 2px;
+}
+
+.trend-bars i {
+  min-height: 8px;
+  border-radius: 4px 4px 0 0;
+}
+
+.trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.trend-legend .team,
+.trend-bars .team {
+  background: #0f6c7a;
+}
+
+.trend-legend .crm,
+.trend-bars .crm {
+  background: #2c8a52;
+}
+
+.trend-legend .visits,
+.trend-bars .visits {
+  background: #c25930;
+}
+
+.top-alert {
+  background: #fff7ed;
+  border-color: #f3d5bf;
+}
+
+.top-alert.critical,
+.insight-card.critical {
+  background: #fff1ef;
+  border: 1px solid #f0c4bd;
+}
+
+.insight-card.warning {
+  background: #fff8e3;
+}
+
+.insight-card.info {
+  background: #eef7f8;
+}
+
+.insight-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: #0f6c7a;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.insight-card-header .icon-button {
+  width: 32px;
+  height: 32px;
+}
+
+.empty-panel {
+  place-items: center;
+  text-align: center;
+}
+
+.selectable-row {
+  width: 100%;
+  padding: 0;
+  text-align: left;
+  background: transparent;
+}
+
 @media (min-width: 760px) {
   .app-frame {
     padding: 28px 0;
