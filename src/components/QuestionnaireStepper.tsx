@@ -1,8 +1,16 @@
-import { ClipboardList, Mic } from 'lucide-solid';
-import { createEffect, createSignal, onCleanup, Show } from 'solid-js';
+import { Bot, CheckCircle2, ClipboardList, LoaderCircle, Mic, Sparkles } from 'lucide-solid';
+import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js';
 import { actions, state } from '../store';
 
 type VoiceTurn = 'idle' | 'listening' | 'speaking' | 'resuming';
+
+const aiReviewSteps = [
+  'Reading questionnaire answers',
+  'Extracting account signals',
+  'Detecting opportunity updates',
+  'Drafting CRM summary',
+  'Ready for review',
+];
 
 const voiceTurnLabel = (turn: VoiceTurn) => {
   if (turn === 'speaking') return 'Reading question';
@@ -23,9 +31,12 @@ function QuestionnaireStepper() {
   const activeQuestion = () => state.questionnaire.snapshot[state.questionnaire.currentQuestionIndex];
   const [speechSupported] = createSignal(Boolean((window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).SpeechRecognition || (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).webkitSpeechRecognition));
   const [isListening, setIsListening] = createSignal(false);
+  const [isAnalyzing, setIsAnalyzing] = createSignal(false);
+  const [aiStepIndex, setAiStepIndex] = createSignal(0);
   const [interimTranscript, setInterimTranscript] = createSignal('');
   const [voiceTurn, setVoiceTurn] = createSignal<VoiceTurn>('idle');
   let recognition: SpeechRecognitionLike | undefined;
+  const aiTimers: ReturnType<typeof window.setTimeout>[] = [];
   let keepVoiceOpen = false;
   let isPausingForReadout = false;
   let lastReadPrompt = '';
@@ -39,6 +50,26 @@ function QuestionnaireStepper() {
     return question ? state.questionnaire.answers[question.id] ?? '' : '';
   };
   const isLastQuestion = () => state.questionnaire.currentQuestionIndex >= state.questionnaire.snapshot.length - 1;
+  const clearAiTimers = () => {
+    aiTimers.forEach((timer) => window.clearTimeout(timer));
+    aiTimers.length = 0;
+  };
+  const startAiReview = () => {
+    if (isAnalyzing()) return;
+    stopVoiceCapture();
+    clearAiTimers();
+    setIsAnalyzing(true);
+    setAiStepIndex(0);
+    actions.showToast('AI is preparing the CRM review...');
+
+    aiReviewSteps.slice(1).forEach((_, index) => {
+      aiTimers.push(window.setTimeout(() => setAiStepIndex(index + 1), 620 * (index + 1)));
+    });
+    aiTimers.push(window.setTimeout(() => {
+      actions.buildReview();
+      clearAiTimers();
+    }, 620 * aiReviewSteps.length));
+  };
   const normalizeVoiceCommand = (text: string) =>
     text
       .trim()
@@ -78,8 +109,8 @@ function QuestionnaireStepper() {
 
     if (nextCommands.includes(command)) {
       if (isLastQuestion()) {
-        actions.buildReview();
-        actions.showToast('Voice command: generate review.');
+        startAiReview();
+        actions.showToast('Voice command: AI review.');
       } else {
         actions.nextQuestion();
         actions.showToast('Voice command: next question.');
@@ -89,8 +120,8 @@ function QuestionnaireStepper() {
 
     if (finishCommands.includes(command)) {
       if (isLastQuestion()) {
-        actions.buildReview();
-        actions.showToast('Voice command: generate review.');
+        startAiReview();
+        actions.showToast('Voice command: AI review.');
       } else {
         actions.showToast('Finish is available on the last question.');
       }
@@ -250,15 +281,16 @@ function QuestionnaireStepper() {
     readActiveQuestion();
   });
 
-  onCleanup(stopVoiceCapture);
+  onCleanup(() => {
+    stopVoiceCapture();
+    clearAiTimers();
+  });
 
   return (
     <Show when={state.questionnaire.visitId && !review()}>
       <section class="panel questionnaire-panel stepper-panel">
-        <div class="section-title">
+        <div class="questionnaire-topbar">
           <div>
-            <span class="eyebrow">Post-interview</span>
-            <h2>Visit questionnaire</h2>
             <p>{progressLabel()}</p>
           </div>
           <div class="segmented-control">
@@ -272,11 +304,7 @@ function QuestionnaireStepper() {
         <Show when={activeQuestion()} fallback={<p>No active questions are configured.</p>}>
           {(question) => (
             <div class="question-card">
-              <span class="eyebrow">{question().category}</span>
               <h2>{question().prompt}</h2>
-              <Show when={!currentAnswer()}>
-                <p class="empty-answer">No answer captured yet.</p>
-              </Show>
               <Show when={state.questionnaire.mode === 'voice'}>
                 <Show when={speechSupported()} fallback={<p>Voice recognition is not available in this browser. Manual input is ready below.</p>}>
                   <div class={isListening() ? 'voice-card active' : 'voice-card'}>
@@ -306,21 +334,44 @@ function QuestionnaireStepper() {
                 <textarea
                   value={currentAnswer()}
                   onInput={(event) => actions.updateAnswer(question().id, event.currentTarget.value)}
-                  rows={question().answerType === 'text' ? 6 : 3}
+                  rows={question().answerType === 'text' ? 5 : 3}
+                  placeholder="Capture the key customer notes..."
                 />
               </label>
             </div>
           )}
         </Show>
+        <Show when={isAnalyzing()}>
+          <div class="ai-review-card" aria-live="polite">
+            <div class="ai-review-header">
+              <Bot size={20} />
+              <div>
+                <span class="eyebrow">AI review</span>
+                <strong>{aiReviewSteps[aiStepIndex()]}</strong>
+              </div>
+              <LoaderCircle size={18} class="sync-spinner" />
+            </div>
+            <div class="ai-review-steps">
+              <For each={aiReviewSteps}>
+                {(step, index) => (
+                  <div class={index() <= aiStepIndex() ? 'ai-step active' : 'ai-step'}>
+                    {index() <= aiStepIndex() ? <CheckCircle2 size={15} /> : <Sparkles size={15} />}
+                    <span>{step}</span>
+                  </div>
+                )}
+              </For>
+            </div>
+          </div>
+        </Show>
         <div class="question-action-bar">
-          <button class="secondary-action" disabled={state.questionnaire.currentQuestionIndex === 0} onClick={() => actions.previousQuestion()}>Previous</button>
+          <button class="secondary-action" disabled={state.questionnaire.currentQuestionIndex === 0 || isAnalyzing()} onClick={() => actions.previousQuestion()}>Previous</button>
           <Show
             when={isLastQuestion()}
-            fallback={<button class="primary-action" onClick={() => actions.nextQuestion()}>Next</button>}
+            fallback={<button class="primary-action" disabled={isAnalyzing()} onClick={() => actions.nextQuestion()}>Next</button>}
           >
-            <button class="primary-action" onClick={() => actions.buildReview()}>
-              <ClipboardList size={18} />
-              Generate review
+            <button class="primary-action" disabled={isAnalyzing()} onClick={startAiReview}>
+              {isAnalyzing() ? <LoaderCircle size={18} class="sync-spinner" /> : <ClipboardList size={18} />}
+              {isAnalyzing() ? 'AI reviewing' : 'Generate review'}
             </button>
           </Show>
         </div>

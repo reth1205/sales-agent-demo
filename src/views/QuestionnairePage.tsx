@@ -3,7 +3,6 @@ import { Match, onMount, Show, Switch } from 'solid-js';
 import Header from '../components/Header';
 import QuestionnaireStepper from '../components/QuestionnaireStepper';
 import ReviewPanel from '../components/ReviewPanel';
-import VisitContext from '../components/VisitContext';
 import { getVisitAccount } from '../selectors';
 import { actions, state } from '../store';
 
@@ -36,11 +35,8 @@ function QuestionnairePage() {
               <span class={`status-badge ${currentVisit().status.toLowerCase()}`}>{currentVisit().status}</span>
               <div>
                 <h2>{account()?.name}</h2>
-                <p>{currentVisit().time} · {currentVisit().address}</p>
+                <p>{currentVisit().time}</p>
               </div>
-              <Show when={account()}>
-                {(currentAccount) => <VisitContext account={currentAccount()} />}
-              </Show>
             </section>
             <Switch>
               <Match when={currentVisit().status === 'Scheduled' || currentVisit().status === 'InProgress'}>
