@@ -119,6 +119,15 @@ const initialMapDemoState = () => ({
   steps: [] as MapDemoStep[],
 });
 
+const loadVisitsWithDefaults = () => {
+  const storedVisits = load('sales-demo-visits', visits);
+  const storedAccountIds = new Set(storedVisits.map((visit) => visit.accountId));
+  const missingVisits = visits.filter((visit) => !storedAccountIds.has(visit.accountId));
+  const nextVisits = missingVisits.length ? [...storedVisits, ...missingVisits] : storedVisits;
+  if (missingVisits.length) save('sales-demo-visits', nextVisits);
+  return nextVisits;
+};
+
 let mapDemoTimer: ReturnType<typeof window.setInterval> | undefined;
 
 const clearMapDemoTimer = () => {
@@ -151,7 +160,7 @@ export const [state, setState] = createStore<AppState>({
     accountCoverage: [...accountCoverageMetrics],
     territories: [...territoryMetrics],
   },
-  visits: load('sales-demo-visits', visits),
+  visits: loadVisitsWithDefaults(),
   settings: {
     questions: load('sales-demo-questions', defaultInterviewQuestions),
     offlineMode: load('sales-demo-offline', false),
@@ -234,8 +243,9 @@ export const actions = {
     setState('ui', 'selectedClientId', accountId);
   },
   selectMapAccount(accountId: string, visitId?: string) {
+    const relatedVisit = visitId ? state.visits.find((visit) => visit.id === visitId) : state.visits.find((visit) => visit.accountId === accountId);
     setState('ui', 'selectedMapAccountId', accountId);
-    setState('ui', 'selectedMapVisitId', visitId);
+    setState('ui', 'selectedMapVisitId', relatedVisit?.id);
   },
   selectMapVisit(visitId: string) {
     const visit = state.visits.find((item) => item.id === visitId);

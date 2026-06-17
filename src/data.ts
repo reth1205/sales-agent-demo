@@ -473,8 +473,13 @@ export const opportunities: Opportunity[] = [
 
 export const visits: ScheduledVisit[] = [
   { id: 'visit-1', accountId: 'acct-acme', time: '09:30', address: accounts[0].address, latitude: accounts[0].latitude, longitude: accounts[0].longitude, radiusMeters: 500, status: 'Scheduled' },
-  { id: 'visit-2', accountId: 'acct-globex', time: '12:00', address: accounts[1].address, latitude: accounts[1].latitude, longitude: accounts[1].longitude, radiusMeters: 450, status: 'Scheduled' },
-  { id: 'visit-3', accountId: 'acct-initech', time: '15:00', address: accounts[2].address, latitude: accounts[2].latitude, longitude: accounts[2].longitude, radiusMeters: 450, status: 'Completed', outcome: 'Renewal expansion confirmed', durationMinutes: 35 },
+  { id: 'visit-2', accountId: 'acct-globex', time: '10:15', address: accounts[1].address, latitude: accounts[1].latitude, longitude: accounts[1].longitude, radiusMeters: 450, status: 'Scheduled' },
+  { id: 'visit-3', accountId: 'acct-initech', time: '11:00', address: accounts[2].address, latitude: accounts[2].latitude, longitude: accounts[2].longitude, radiusMeters: 450, status: 'Scheduled' },
+  { id: 'visit-4', accountId: 'acct-horizon', time: '11:45', address: accounts[3].address, latitude: accounts[3].latitude, longitude: accounts[3].longitude, radiusMeters: 450, status: 'Scheduled' },
+  { id: 'visit-5', accountId: 'acct-northstar', time: '12:30', address: accounts[4].address, latitude: accounts[4].latitude, longitude: accounts[4].longitude, radiusMeters: 450, status: 'Scheduled' },
+  { id: 'visit-6', accountId: 'acct-urban-foods', time: '13:15', address: accounts[5].address, latitude: accounts[5].latitude, longitude: accounts[5].longitude, radiusMeters: 450, status: 'Scheduled' },
+  { id: 'visit-7', accountId: 'acct-atlas', time: '14:00', address: accounts[6].address, latitude: accounts[6].latitude, longitude: accounts[6].longitude, radiusMeters: 450, status: 'Scheduled' },
+  { id: 'visit-8', accountId: 'acct-pinnacle', time: '14:45', address: accounts[7].address, latitude: accounts[7].latitude, longitude: accounts[7].longitude, radiusMeters: 450, status: 'Scheduled' },
 ];
 
 export const activities: ActivityEvent[] = [
