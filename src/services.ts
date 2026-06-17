@@ -233,8 +233,25 @@ export const interpretVisitAnswers = (
   };
 };
 
-export const speakText = (text: string) => {
+export const speakText = (text: string, lang = 'en-US') => {
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = lang;
+  window.speechSynthesis.speak(utterance);
+};
+
+export const cancelSpeech = () => {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+};
+
+export const pauseSpeech = () => {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.pause();
+};
+
+export const resumeSpeech = () => {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.resume();
 };

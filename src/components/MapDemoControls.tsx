@@ -1,4 +1,4 @@
-import { Pause, Play, SkipForward, X } from 'lucide-solid';
+import { Pause, Play, SkipForward, Volume2, X } from 'lucide-solid';
 import { Show } from 'solid-js';
 import { getAccount } from '../selectors';
 import { actions, state } from '../store';
@@ -29,6 +29,14 @@ function MapDemoControls() {
           </span>
           <strong>{demo().isMoving ? `Moving to ${currentAccount()?.name ?? 'destination'}` : currentStep()?.label}</strong>
           <p>{currentStep()?.message}</p>
+          <Show when={demo().voiceMessage}>
+            {(message) => (
+              <div class="demo-voice-line" aria-live="polite">
+                <Volume2 size={14} />
+                <span>{message()}</span>
+              </div>
+            )}
+          </Show>
           <Show when={demo().isMoving}>
             <div class="demo-progress-line">
               <span style={{ width: `${demo().movementProgress}%` }} />

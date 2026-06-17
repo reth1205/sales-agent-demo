@@ -16,7 +16,7 @@ import {
   territoryMetrics,
   visits,
 } from './data';
-import { buildMapDemoSteps, buildNavigationUrl, getActiveQuestions, getDistanceMeters, interpretVisitAnswers, makeId } from './services';
+import { buildMapDemoSteps, buildNavigationUrl, cancelSpeech, getActiveQuestions, getDistanceMeters, interpretVisitAnswers, makeId, pauseSpeech, resumeSpeech, speakText } from './services';
 import type { InterviewQuestion, LocationPoint, MapDemoStep, OfflineQueueItem, ProgressState, ReportingTab, ReviewSummary, Task } from './types';
 
 type AppState = {
@@ -65,6 +65,7 @@ type AppState = {
       isPaused: boolean;
       isMoving: boolean;
       movementProgress: number;
+      voiceMessage?: string;
       currentStepIndex: number;
       steps: MapDemoStep[];
     };
@@ -113,6 +114,7 @@ const initialMapDemoState = () => ({
   isPaused: false,
   isMoving: false,
   movementProgress: 0,
+  voiceMessage: undefined,
   currentStepIndex: 0,
   steps: [] as MapDemoStep[],
 });
@@ -123,6 +125,11 @@ const clearMapDemoTimer = () => {
   if (!mapDemoTimer) return;
   window.clearInterval(mapDemoTimer);
   mapDemoTimer = undefined;
+};
+
+const announceMapDemo = (message: string) => {
+  setState('ui', 'mapDemo', 'voiceMessage', message);
+  speakText(message, 'en-US');
 };
 
 export const [state, setState] = createStore<AppState>({
@@ -315,6 +322,7 @@ export const actions = {
       isPaused: false,
       isMoving: false,
       movementProgress: 0,
+      voiceMessage: undefined,
       currentStepIndex: 0,
       steps,
     });
@@ -335,6 +343,10 @@ export const actions = {
     setState('ui', 'activeRecommendationId', step.recommendationId);
     setState('ui', 'mapDemo', 'isMoving', false);
     setState('ui', 'mapDemo', 'movementProgress', 100);
+    const account = state.crm.accounts.find((item) => item.id === step.accountId);
+    if (account) {
+      announceMapDemo(`You have arrived at your destination. You are visiting ${account.name}.`);
+    }
   },
   animateMapDemoStep(stepIndex: number) {
     clearMapDemoTimer();
@@ -342,8 +354,9 @@ export const actions = {
     if (!step) return;
     const start = { ...state.location.current };
     const end = step.location;
-    const frames = 22;
+    const frames = 48;
     let frame = 0;
+    const account = state.crm.accounts.find((item) => item.id === step.accountId);
 
     setState('ui', 'selectedMapAccountId', undefined);
     setState('ui', 'selectedMapVisitId', undefined);
@@ -351,6 +364,9 @@ export const actions = {
     setState('ui', 'mapDemo', 'isMoving', true);
     setState('ui', 'mapDemo', 'movementProgress', 0);
     setState('location', { current: start, permission: 'granted', isDemo: true });
+    if (account) {
+      announceMapDemo(`You are approaching your destination. Next customer visit: ${account.name}.`);
+    }
 
     mapDemoTimer = window.setInterval(() => {
       if (!state.ui.mapDemo.isRunning) {
@@ -377,7 +393,7 @@ export const actions = {
         actions.applyMapDemoStep(stepIndex);
         actions.checkGeofences();
       }
-    }, 110);
+    }, 125);
   },
   advanceMapDemoStep() {
     if (!state.ui.mapDemo.isRunning) {
@@ -391,10 +407,17 @@ export const actions = {
   },
   pauseMapDemo() {
     if (!state.ui.mapDemo.isRunning) return;
-    setState('ui', 'mapDemo', 'isPaused', (value) => !value);
+    const willPause = !state.ui.mapDemo.isPaused;
+    setState('ui', 'mapDemo', 'isPaused', willPause);
+    if (willPause) {
+      pauseSpeech();
+    } else {
+      resumeSpeech();
+    }
   },
   stopMapDemo() {
     clearMapDemoTimer();
+    cancelSpeech();
     setState('ui', 'mapDemo', initialMapDemoState());
     setState('ui', 'activeRecommendationId', undefined);
   },
@@ -545,6 +568,7 @@ export const actions = {
   },
   resetDemoActivity() {
     clearMapDemoTimer();
+    cancelSpeech();
     setState('visits', visits.map((visit) => ({ ...visit })));
     setState('progress', { ...initialProgress, milestones: [] });
     setState('queue', []);
@@ -579,6 +603,7 @@ export const actions = {
   },
   resetApp() {
     clearMapDemoTimer();
+    cancelSpeech();
     storageKeys.forEach((key) => localStorage.removeItem(key));
     setState('location', { current: demoLocation, permission: 'idle', isDemo: true });
     setState('crm', {
