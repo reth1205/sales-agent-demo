@@ -5,7 +5,7 @@ import { actions, state } from '../store';
 type VoiceTurn = 'idle' | 'listening' | 'speaking' | 'resuming';
 
 const aiReviewSteps = [
-  'Reading questionnaire answers',
+  'Reading debrief transcript',
   'Extracting account signals',
   'Detecting opportunity updates',
   'Drafting CRM summary',
@@ -60,7 +60,7 @@ function QuestionnaireStepper() {
     clearAiTimers();
     setIsAnalyzing(true);
     setAiStepIndex(0);
-    actions.showToast('AI is preparing the CRM review...');
+    actions.showToast('AI is preparing the CRM debrief...');
 
     aiReviewSteps.slice(1).forEach((_, index) => {
       aiTimers.push(window.setTimeout(() => setAiStepIndex(index + 1), 620 * (index + 1)));
@@ -97,9 +97,9 @@ function QuestionnaireStepper() {
   };
   const runVoiceNavigationCommand = (transcript: string) => {
     const command = normalizeVoiceCommand(transcript);
-    const previousCommands = ['previous', 'previous question', 'previus', 'previus question', 'back', 'go back', 'anterior', 'pregunta anterior', 'regresar'];
-    const nextCommands = ['next', 'next question', 'continue', 'go next', 'siguiente', 'pregunta siguiente', 'continuar'];
-    const finishCommands = ['finish', 'finalize', 'generate review', 'submit', 'done', 'finalizar', 'terminar', 'generar revision'];
+    const previousCommands = ['previous', 'previous question', 'previus', 'previus question', 'back', 'go back'];
+    const nextCommands = ['next', 'next question', 'continue', 'go next'];
+    const finishCommands = ['finish', 'finalize', 'generate review', 'submit', 'done'];
 
     if (previousCommands.includes(command)) {
       actions.previousQuestion();
@@ -312,7 +312,7 @@ function QuestionnaireStepper() {
                       <Mic size={24} />
                       <div>
                         <strong>{isListening() ? voiceTurnLabel(voiceTurn()) : 'Microphone ready'}</strong>
-                        <span>{isListening() ? voiceTurnHelp(voiceTurn()) : 'Start the microphone to hear the question, dictate, or use commands.'}</span>
+                        <span>{isListening() ? voiceTurnHelp(voiceTurn()) : 'Start the microphone to hear the prompt, dictate, or use commands.'}</span>
                       </div>
                     </div>
                     <div class="voice-transcript" aria-live="polite">
@@ -371,7 +371,7 @@ function QuestionnaireStepper() {
           >
             <button class="primary-action" disabled={isAnalyzing()} onClick={startAiReview}>
               {isAnalyzing() ? <LoaderCircle size={18} class="sync-spinner" /> : <ClipboardList size={18} />}
-              {isAnalyzing() ? 'AI reviewing' : 'Generate review'}
+              {isAnalyzing() ? 'AI reviewing' : 'Generate debrief'}
             </button>
           </Show>
         </div>

@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, WifiOff } from 'lucide-solid';
+import { Bot, ChevronDown, ChevronUp, WifiOff } from 'lucide-solid';
 import { createSignal, For, Show } from 'solid-js';
 import Header from '../components/Header';
 import VisitActions from '../components/VisitActions';
@@ -12,13 +12,15 @@ function SchedulePage() {
 
   return (
     <div class="content-stack">
-      <Header title="Schedule" subtitle="Today route" />
+      <Header title="My Day" subtitle="Route, briefings, and visit capture" />
       <section class="panel schedule-list-panel">
         <For each={state.visits}>
           {(visit) => {
             const account = () => getVisitAccount(visit);
             const distance = () => getDistanceMeters(state.location.current, { latitude: visit.latitude, longitude: visit.longitude });
             const isExpanded = () => expandedVisitId() === visit.id;
+            const assistantNotification = () => state.assistant.notifications.find((item) => item.visitId === visit.id && item.status !== 'dismissed');
+            const briefing = () => state.assistant.briefings.find((item) => item.visitId === visit.id);
             return (
               <div class={isExpanded() ? 'schedule-row expanded' : 'schedule-row'}>
                 <button class="schedule-row-summary" onClick={() => setExpandedVisitId(isExpanded() ? undefined : visit.id)}>
@@ -26,6 +28,12 @@ function SchedulePage() {
                     <span class={`status-badge ${visit.status.toLowerCase()}`}>{visit.status}</span>
                     <strong>{account()?.name}</strong>
                     <span>{visit.time} - {formatDistance(distance())}</span>
+                    <Show when={assistantNotification() || briefing()}>
+                      <span class="assistant-row-signal">
+                        <Bot size={13} />
+                        {assistantNotification()?.type === 'postMeetingDebrief' ? 'Debrief ready' : 'AI briefing ready'}
+                      </span>
+                    </Show>
                   </div>
                   <div class="schedule-row-icons">
                     <Show when={visit.pendingSync}>

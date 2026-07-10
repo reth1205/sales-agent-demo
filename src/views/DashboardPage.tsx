@@ -1,8 +1,11 @@
 import { Layers } from 'lucide-solid';
-import CustomerMapSummarySheet from '../components/CustomerMapSummarySheet';
+import AssistantNotificationSheet from '../components/AssistantNotificationSheet';
+import AssistantTopNotification from '../components/AssistantTopNotification';
+import ClientVisitStartDialog from '../components/ClientVisitStartDialog';
 import MapView from '../components/MapView';
-import MapDemoControls from '../components/MapDemoControls';
-import NearbyRecommendationBanner from '../components/NearbyRecommendationBanner';
+import MeetingSimulationBanner from '../components/MeetingSimulationBanner';
+import RouteSimulationBanner from '../components/RouteSimulationBanner';
+import VisitStatusPrompt from '../components/VisitStatusPrompt';
 import { actions, state } from '../store';
 
 function DashboardPage() {
@@ -10,7 +13,9 @@ function DashboardPage() {
     <>
       <MapView />
       <div class="dashboard-overlay top">
-        <MapDemoControls />
+        <AssistantTopNotification />
+        <RouteSimulationBanner />
+        <MeetingSimulationBanner />
         <div class="map-utility-row">
           <button
             class={state.ui.isCoverageLayerVisible ? 'secondary-action compact-action selected-tool' : 'secondary-action compact-action'}
@@ -27,8 +32,9 @@ function DashboardPage() {
           )}
         </div>
       </div>
-      <NearbyRecommendationBanner />
-      <CustomerMapSummarySheet />
+      <VisitStatusPrompt />
+      <ClientVisitStartDialog />
+      <AssistantNotificationSheet />
     </>
   );
 }

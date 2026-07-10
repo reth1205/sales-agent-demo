@@ -57,7 +57,7 @@ function AccountCoveragePanel() {
         <For each={state.manager.territories}>
           {(territory) => (
             <div>
-              <strong>{territory.territory.replace('Mexico City ', '')}</strong>
+              <strong>{territory.territory.replace('Austin ', '')}</strong>
               <span>{territory.visitsCompleted} visits</span>
               <span>{formatPercent(territory.efficiency)} efficiency</span>
             </div>

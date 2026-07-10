@@ -16,8 +16,22 @@ import {
   territoryMetrics,
   visits,
 } from './data';
-import { buildMapDemoSteps, buildNavigationUrl, cancelSpeech, getActiveQuestions, getDistanceMeters, interpretVisitAnswers, makeId, pauseSpeech, resumeSpeech, speakText } from './services';
-import type { InterviewQuestion, LocationPoint, MapDemoStep, OfflineQueueItem, ProgressState, ReportingTab, ReviewSummary, Task } from './types';
+import { assistantTiming, buildMapDemoSteps, buildNavigationUrl, buildPreMeetingBriefing, cancelSpeech, getActiveQuestions, getDistanceMeters, interpretVisitAnswers, makeId, pauseSpeech, resumeSpeech, speakText } from './services';
+import type {
+  AssistantNotification,
+  BehaviorKpiUpdate,
+  InterviewQuestion,
+  LocationPoint,
+  MapDemoStep,
+  OfflineQueueItem,
+  PostMeetingExtraction,
+  PreMeetingBriefing,
+  ProgressState,
+  ReportingTab,
+  ReviewSummary,
+  SalesforceWritebackStatus,
+  Task,
+} from './types';
 
 type AppState = {
   session: {
@@ -51,12 +65,22 @@ type AppState = {
   };
   progress: ProgressState;
   queue: OfflineQueueItem[];
+  assistant: {
+    isDemoMode: boolean;
+    notifications: AssistantNotification[];
+    briefings: PreMeetingBriefing[];
+    extractions: PostMeetingExtraction[];
+    writebacks: SalesforceWritebackStatus[];
+    kpis: BehaviorKpiUpdate[];
+  };
   ui: {
     activeVisitPromptId?: string;
+    activeAssistantNotificationId?: string;
     toast?: string;
     selectedClientId?: string;
     selectedMapAccountId?: string;
     selectedMapVisitId?: string;
+    visitBriefingAccountId?: string;
     activeRecommendationId?: string;
     isCoverageLayerVisible: boolean;
     dismissedRecommendationIds: string[];
@@ -68,6 +92,13 @@ type AppState = {
       voiceMessage?: string;
       currentStepIndex: number;
       steps: MapDemoStep[];
+    };
+    meetingDemo: {
+      isRunning: boolean;
+      visitId?: string;
+      progress: number;
+      elapsedSeconds: number;
+      durationSeconds: number;
     };
     selectedManagerAgentId?: string;
     reportingTab: ReportingTab;
@@ -107,6 +138,11 @@ const storageKeys = [
   'sales-demo-reporting-tab',
   'sales-demo-dismissed-manager-insights',
   'sales-demo-dismissed-recommendations',
+  'sales-demo-assistant-notifications',
+  'sales-demo-assistant-briefings',
+  'sales-demo-assistant-extractions',
+  'sales-demo-assistant-writebacks',
+  'sales-demo-assistant-kpis',
 ];
 
 const initialMapDemoState = () => ({
@@ -119,16 +155,38 @@ const initialMapDemoState = () => ({
   steps: [] as MapDemoStep[],
 });
 
+const initialMeetingDemoState = () => ({
+  isRunning: false,
+  visitId: undefined,
+  progress: 0,
+  elapsedSeconds: 0,
+  durationSeconds: assistantTiming.demo.postMeetingWindowSeconds,
+});
+
 const loadVisitsWithDefaults = () => {
   const storedVisits = load('sales-demo-visits', visits);
-  const storedAccountIds = new Set(storedVisits.map((visit) => visit.accountId));
-  const missingVisits = visits.filter((visit) => !storedAccountIds.has(visit.accountId));
-  const nextVisits = missingVisits.length ? [...storedVisits, ...missingVisits] : storedVisits;
-  if (missingVisits.length) save('sales-demo-visits', nextVisits);
+  const nextVisits = visits.map((defaultVisit) => {
+    const storedVisit = storedVisits.find((visit) => visit.id === defaultVisit.id || visit.accountId === defaultVisit.accountId);
+    if (!storedVisit) return defaultVisit;
+    return {
+      ...defaultVisit,
+      status: storedVisit.status,
+      startedAt: storedVisit.startedAt,
+      finishedAt: storedVisit.finishedAt,
+      durationMinutes: storedVisit.durationMinutes,
+      outcome: storedVisit.outcome,
+      notes: storedVisit.notes,
+      pendingSync: storedVisit.pendingSync,
+    };
+  });
+  save('sales-demo-visits', nextVisits);
   return nextVisits;
 };
 
 let mapDemoTimer: ReturnType<typeof window.setInterval> | undefined;
+let preMeetingDemoTimer: ReturnType<typeof window.setTimeout> | undefined;
+let postMeetingDemoTimer: ReturnType<typeof window.setInterval> | undefined;
+let notificationAudioContext: AudioContext | undefined;
 
 const clearMapDemoTimer = () => {
   if (!mapDemoTimer) return;
@@ -136,9 +194,45 @@ const clearMapDemoTimer = () => {
   mapDemoTimer = undefined;
 };
 
+const clearAssistantDemoTimers = () => {
+  if (preMeetingDemoTimer) {
+    window.clearTimeout(preMeetingDemoTimer);
+    preMeetingDemoTimer = undefined;
+  }
+  if (postMeetingDemoTimer) {
+    window.clearInterval(postMeetingDemoTimer);
+    postMeetingDemoTimer = undefined;
+  }
+  setState('ui', 'meetingDemo', initialMeetingDemoState());
+};
+
 const announceMapDemo = (message: string) => {
   setState('ui', 'mapDemo', 'voiceMessage', message);
   speakText(message, 'en-US');
+};
+
+const playNotificationSound = () => {
+  try {
+    notificationAudioContext ??= new AudioContext();
+    const context = notificationAudioContext;
+    const playTone = (frequency: number, startOffset: number) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.0001, context.currentTime + startOffset);
+      gain.gain.exponentialRampToValueAtTime(0.16, context.currentTime + startOffset + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + startOffset + 0.22);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(context.currentTime + startOffset);
+      oscillator.stop(context.currentTime + startOffset + 0.24);
+    };
+    playTone(880, 0);
+    playTone(1175, 0.16);
+  } catch {
+    // Browsers can block audio until user interaction; the visual notification still works.
+  }
 };
 
 export const [state, setState] = createStore<AppState>({
@@ -167,14 +261,25 @@ export const [state, setState] = createStore<AppState>({
   },
   progress: load('sales-demo-progress', initialProgress),
   queue: load('sales-demo-queue', [] as OfflineQueueItem[]),
+  assistant: {
+    isDemoMode: true,
+    notifications: load('sales-demo-assistant-notifications', [] as AssistantNotification[]),
+    briefings: load('sales-demo-assistant-briefings', [] as PreMeetingBriefing[]),
+    extractions: load('sales-demo-assistant-extractions', [] as PostMeetingExtraction[]),
+    writebacks: load('sales-demo-assistant-writebacks', [] as SalesforceWritebackStatus[]),
+    kpis: load('sales-demo-assistant-kpis', [] as BehaviorKpiUpdate[]),
+  },
   ui: {
+    activeAssistantNotificationId: undefined,
     selectedClientId: undefined,
     selectedMapAccountId: undefined,
     selectedMapVisitId: undefined,
+    visitBriefingAccountId: undefined,
     activeRecommendationId: undefined,
     isCoverageLayerVisible: false,
     dismissedRecommendationIds: load('sales-demo-dismissed-recommendations', [] as string[]),
     mapDemo: initialMapDemoState(),
+    meetingDemo: initialMeetingDemoState(),
     selectedManagerAgentId: fieldAgents[0]?.id,
     reportingTab: load('sales-demo-reporting-tab', 'overview' as ReportingTab),
     dismissedManagerInsightIds: load('sales-demo-dismissed-manager-insights', [] as string[]),
@@ -195,6 +300,13 @@ const persistTasks = () => save('sales-demo-tasks', state.crm.tasks);
 const persistReportingTab = () => save('sales-demo-reporting-tab', state.ui.reportingTab);
 const persistDismissedManagerInsights = () => save('sales-demo-dismissed-manager-insights', state.ui.dismissedManagerInsightIds);
 const persistDismissedRecommendations = () => save('sales-demo-dismissed-recommendations', state.ui.dismissedRecommendationIds);
+const persistAssistant = () => {
+  save('sales-demo-assistant-notifications', state.assistant.notifications);
+  save('sales-demo-assistant-briefings', state.assistant.briefings);
+  save('sales-demo-assistant-extractions', state.assistant.extractions);
+  save('sales-demo-assistant-writebacks', state.assistant.writebacks);
+  save('sales-demo-assistant-kpis', state.assistant.kpis);
+};
 
 const addProgress = (amount: number) => {
   setState('progress', produce((progress) => {
@@ -214,6 +326,58 @@ const addProgress = (amount: number) => {
   persistProgress();
 };
 
+const getVisitContext = (visitId: string) => {
+  const visit = state.visits.find((item) => item.id === visitId);
+  if (!visit) return undefined;
+  const account = state.crm.accounts.find((item) => item.id === visit.accountId);
+  if (!account) return undefined;
+  const contactsForAccount = state.crm.contacts.filter((contact) => contact.accountId === account.id);
+  const opportunity = state.crm.opportunities.find((item) => item.accountId === account.id);
+  const tasksForAccount = state.crm.tasks.filter((task) => task.accountId === account.id);
+  const activitiesForAccount = state.crm.activities.filter((activity) => activity.accountId === account.id);
+  return { visit, account, contactsForAccount, opportunity, tasksForAccount, activitiesForAccount };
+};
+
+const upsertBriefing = (briefing: PreMeetingBriefing) => {
+  const index = state.assistant.briefings.findIndex((item) => item.visitId === briefing.visitId);
+  if (index >= 0) {
+    setState('assistant', 'briefings', index, briefing);
+  } else {
+    setState('assistant', 'briefings', state.assistant.briefings.length, briefing);
+  }
+};
+
+const upsertNotification = (notification: AssistantNotification) => {
+  const index = state.assistant.notifications.findIndex((item) => item.id === notification.id);
+  if (index >= 0) {
+    setState('assistant', 'notifications', index, notification);
+  } else {
+    setState('assistant', 'notifications', state.assistant.notifications.length, notification);
+  }
+};
+
+const createDefaultWriteback = (review: ReviewSummary): SalesforceWritebackStatus | undefined => {
+  const extraction = review.extraction;
+  if (!extraction) return undefined;
+  const now = new Date().toISOString();
+  return {
+    id: makeId('writeback'),
+    visitId: review.visitId,
+    accountId: extraction.accountId,
+    extractionId: extraction.id,
+    status: state.settings.offlineMode ? 'pending' : 'synced',
+    createdAt: now,
+    updatedAt: now,
+    steps: [
+      { id: 'account', label: 'Account', status: 'synced' },
+      { id: 'opportunity', label: 'Opportunity', status: review.opportunityUpdate ? 'synced' : 'pending' },
+      { id: 'tasks', label: 'Tasks', status: review.tasks.length ? 'synced' : 'pending' },
+      { id: 'calendar', label: 'Calendar event', status: extraction.futureMeetingDate ? 'synced' : 'pending' },
+      { id: 'kpi', label: 'Manager KPI sync', status: 'synced' },
+    ],
+  };
+};
+
 export const actions = {
   login() {
     setState('session', 'isAuthenticated', true);
@@ -226,6 +390,137 @@ export const actions = {
   showToast(message: string) {
     setState('ui', 'toast', message);
     window.setTimeout(() => setState('ui', 'toast', undefined), 2600);
+  },
+  openAssistantNotification(notificationId: string) {
+    const notification = state.assistant.notifications.find((item) => item.id === notificationId);
+    if (!notification) return;
+    setState('assistant', 'notifications', (item) => item.id === notificationId, 'status', 'opened');
+    setState('ui', 'activeAssistantNotificationId', notificationId);
+    actions.selectMapAccount(notification.accountId, notification.visitId, { showVisitBriefing: false });
+    persistAssistant();
+  },
+  dismissAssistantNotification(notificationId: string) {
+    setState('assistant', 'notifications', (item) => item.id === notificationId, 'status', 'dismissed');
+    if (state.ui.activeAssistantNotificationId === notificationId) {
+      setState('ui', 'activeAssistantNotificationId', undefined);
+    }
+    persistAssistant();
+  },
+  clearAssistantNotification() {
+    setState('ui', 'activeAssistantNotificationId', undefined);
+  },
+  triggerDestinationEta(visitId: string, triggerReason: AssistantNotification['triggerReason'] = 'destinationStart') {
+    const context = getVisitContext(visitId);
+    if (!context) return;
+    const notificationId = `eta-${visitId}`;
+    upsertNotification({
+      id: notificationId,
+      type: 'destinationEta',
+      visitId,
+      accountId: context.account.id,
+      title: 'Route alert',
+      message: `You are 15 minutes away from your destination with ${context.account.name}.`,
+      triggerReason,
+      createdAt: new Date().toISOString(),
+      status: 'unread',
+    });
+    persistAssistant();
+    playNotificationSound();
+  },
+  triggerArrivalBriefing(visitId: string, triggerReason: AssistantNotification['triggerReason'] = 'simulatedArrival') {
+    const context = getVisitContext(visitId);
+    if (!context) return;
+    const notificationId = `arrival-${visitId}`;
+    setState('assistant', 'notifications', (item) => item.id === `eta-${visitId}`, 'status', 'dismissed');
+    const distance = getDistanceMeters(state.location.current, {
+      latitude: context.account.latitude,
+      longitude: context.account.longitude,
+    });
+    const briefing = buildPreMeetingBriefing(
+      context.visit,
+      context.account,
+      context.contactsForAccount,
+      context.opportunity,
+      context.tasksForAccount,
+      context.activitiesForAccount,
+      distance,
+    );
+    upsertBriefing(briefing);
+    upsertNotification({
+      id: notificationId,
+      type: 'arrivalBriefing',
+      visitId,
+      accountId: context.account.id,
+      title: 'You have arrived',
+      message: `You have arrived at ${context.account.name}. Open the briefing before starting the visit.`,
+      triggerReason,
+      createdAt: new Date().toISOString(),
+      status: 'unread',
+    });
+    persistAssistant();
+    playNotificationSound();
+    actions.showToast('Briefing ready.');
+  },
+  triggerPreMeetingBriefing(visitId: string, triggerReason: AssistantNotification['triggerReason'] = 'demoTimer') {
+    actions.triggerArrivalBriefing(visitId, triggerReason);
+  },
+  triggerPostMeetingDebrief(visitId: string, triggerReason: AssistantNotification['triggerReason'] = 'meetingTimer') {
+    const context = getVisitContext(visitId);
+    if (!context) return;
+    const notificationId = `post-${visitId}`;
+    upsertNotification({
+      id: notificationId,
+      type: 'postMeetingDebrief',
+      visitId,
+      accountId: context.account.id,
+      title: 'Post-visit debrief ready',
+      message: `${context.account.name} is ready for voice capture. Demo: 30 minutes simulated in ${assistantTiming.demo.postMeetingWindowSeconds} sec.`,
+      triggerReason,
+      createdAt: new Date().toISOString(),
+      status: 'unread',
+    });
+    persistAssistant();
+    actions.showToast('Post-visit debrief is ready.');
+  },
+  schedulePreMeetingDemo(visitId: string) {
+    if (!state.assistant.isDemoMode) return;
+    if (state.assistant.notifications.some((item) => item.id === `pre-${visitId}` && item.status !== 'dismissed')) return;
+    if (preMeetingDemoTimer) window.clearTimeout(preMeetingDemoTimer);
+    preMeetingDemoTimer = window.setTimeout(() => {
+      preMeetingDemoTimer = undefined;
+      actions.triggerPreMeetingBriefing(visitId, 'demoTimer');
+    }, assistantTiming.demo.preMeetingLeadSeconds * 1000);
+  },
+  schedulePostMeetingDemo(visitId: string) {
+    if (!state.assistant.isDemoMode) return;
+    if (postMeetingDemoTimer) window.clearInterval(postMeetingDemoTimer);
+    const durationSeconds = assistantTiming.demo.postMeetingWindowSeconds;
+    const tickMs = 125;
+    const frames = Math.max(1, Math.round((durationSeconds * 1000) / tickMs));
+    let frame = 0;
+    setState('ui', 'meetingDemo', {
+      isRunning: true,
+      visitId,
+      progress: 0,
+      elapsedSeconds: 0,
+      durationSeconds,
+    });
+    postMeetingDemoTimer = window.setInterval(() => {
+      frame += 1;
+      const progress = Math.min(frame / frames, 1);
+      setState('ui', 'meetingDemo', {
+        isRunning: true,
+        visitId,
+        progress: Math.round(progress * 100),
+        elapsedSeconds: Math.min(durationSeconds, Math.round(progress * durationSeconds)),
+        durationSeconds,
+      });
+      if (progress < 1) return;
+      if (postMeetingDemoTimer) window.clearInterval(postMeetingDemoTimer);
+      postMeetingDemoTimer = undefined;
+      setState('ui', 'meetingDemo', initialMeetingDemoState());
+      actions.triggerPostMeetingDebrief(visitId, 'meetingTimer');
+    }, tickMs);
   },
   selectManagerAgent(agentId?: string) {
     setState('ui', 'selectedManagerAgentId', agentId);
@@ -242,10 +537,11 @@ export const actions = {
   selectClient(accountId?: string) {
     setState('ui', 'selectedClientId', accountId);
   },
-  selectMapAccount(accountId: string, visitId?: string) {
+  selectMapAccount(accountId: string, visitId?: string, options: { showVisitBriefing?: boolean } = {}) {
     const relatedVisit = visitId ? state.visits.find((visit) => visit.id === visitId) : state.visits.find((visit) => visit.accountId === accountId);
     setState('ui', 'selectedMapAccountId', accountId);
     setState('ui', 'selectedMapVisitId', relatedVisit?.id);
+    setState('ui', 'visitBriefingAccountId', options.showVisitBriefing === false ? undefined : accountId);
   },
   selectMapVisit(visitId: string) {
     const visit = state.visits.find((item) => item.id === visitId);
@@ -255,6 +551,7 @@ export const actions = {
   clearMapSelection() {
     setState('ui', 'selectedMapAccountId', undefined);
     setState('ui', 'selectedMapVisitId', undefined);
+    setState('ui', 'visitBriefingAccountId', undefined);
   },
   dismissRecommendation(recommendationId: string) {
     if (!state.ui.dismissedRecommendationIds.includes(recommendationId)) {
@@ -323,6 +620,74 @@ export const actions = {
     if (!account) return;
     window.open(buildNavigationUrl(account), '_blank', 'noopener,noreferrer');
   },
+  startClientDestinationDemo(accountId: string) {
+    clearMapDemoTimer();
+    const account = state.crm.accounts.find((item) => item.id === accountId);
+    if (!account) return;
+    const visit = state.visits.find((item) => item.accountId === account.id);
+    const start = { ...state.location.current };
+    const end = { latitude: account.latitude, longitude: account.longitude };
+    const frames = Math.max(1, Math.round((assistantTiming.demo.preMeetingLeadSeconds * 1000) / 125));
+    let frame = 0;
+
+    if (visit) {
+      actions.triggerDestinationEta(visit.id, 'destinationStart');
+    }
+
+    setState('ui', 'selectedMapAccountId', undefined);
+    setState('ui', 'selectedMapVisitId', undefined);
+    setState('ui', 'visitBriefingAccountId', undefined);
+    setState('ui', 'activeRecommendationId', undefined);
+    setState('ui', 'mapDemo', {
+      isRunning: true,
+      isPaused: false,
+      isMoving: true,
+      movementProgress: 0,
+      voiceMessage: `You are 15 minutes away from your destination with ${account.name}.`,
+      currentStepIndex: 0,
+      steps: [{
+        id: `client-demo-${account.id}`,
+        label: 'Selected destination',
+        accountId: account.id,
+        location: end,
+        message: `Simulating route to ${account.name}.`,
+      }],
+    });
+    setState('location', { current: start, permission: 'granted', isDemo: true });
+    speakText(`You are 15 minutes away from your destination with ${account.name}.`, 'en-US');
+
+    mapDemoTimer = window.setInterval(() => {
+      if (!state.ui.mapDemo.isRunning) {
+        clearMapDemoTimer();
+        return;
+      }
+      frame += 1;
+      const progress = Math.min(frame / frames, 1);
+      const eased = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+      setState('location', {
+        current: {
+          latitude: start.latitude + (end.latitude - start.latitude) * eased,
+          longitude: start.longitude + (end.longitude - start.longitude) * eased,
+        },
+        permission: 'granted',
+        isDemo: true,
+      });
+      setState('ui', 'mapDemo', 'movementProgress', Math.round(progress * 100));
+
+      if (progress >= 1) {
+        clearMapDemoTimer();
+        setState('location', { current: end, permission: 'granted', isDemo: true });
+        setState('ui', 'mapDemo', 'isRunning', false);
+        setState('ui', 'mapDemo', 'isMoving', false);
+        setState('ui', 'mapDemo', 'movementProgress', 100);
+        if (visit) {
+          actions.triggerArrivalBriefing(visit.id, 'simulatedArrival');
+          setState('ui', 'activeVisitPromptId', visit.id);
+        }
+        actions.showToast(`Arrived near ${account.name}.`);
+      }
+    }, 125);
+  },
   startMapDemo() {
     clearMapDemoTimer();
     const steps = buildMapDemoSteps(state.crm.accounts, state.visits, []);
@@ -337,6 +702,11 @@ export const actions = {
       steps,
     });
     actions.animateMapDemoStep(0);
+    const firstStep = steps[0];
+    const firstVisit = firstStep ? state.visits.find((item) => item.accountId === firstStep.accountId && item.status === 'Scheduled') : undefined;
+    if (firstVisit) {
+      actions.triggerPreMeetingBriefing(firstVisit.id, 'demoTimer');
+    }
     actions.showToast('Map demo started.');
   },
   applyMapDemoStep(stepIndex: number) {
@@ -350,6 +720,7 @@ export const actions = {
     });
     setState('ui', 'selectedMapAccountId', step.accountId);
     setState('ui', 'selectedMapVisitId', visit?.id);
+    setState('ui', 'visitBriefingAccountId', undefined);
     setState('ui', 'activeRecommendationId', step.recommendationId);
     setState('ui', 'mapDemo', 'isMoving', false);
     setState('ui', 'mapDemo', 'movementProgress', 100);
@@ -367,15 +738,20 @@ export const actions = {
     const frames = 48;
     let frame = 0;
     const account = state.crm.accounts.find((item) => item.id === step.accountId);
+    const visit = state.visits.find((item) => item.accountId === step.accountId && item.status === 'Scheduled');
 
     setState('ui', 'selectedMapAccountId', undefined);
     setState('ui', 'selectedMapVisitId', undefined);
+    setState('ui', 'visitBriefingAccountId', undefined);
     setState('ui', 'activeRecommendationId', undefined);
     setState('ui', 'mapDemo', 'isMoving', true);
     setState('ui', 'mapDemo', 'movementProgress', 0);
     setState('location', { current: start, permission: 'granted', isDemo: true });
     if (account) {
       announceMapDemo(`You are approaching your destination. Next customer visit: ${account.name}.`);
+    }
+    if (visit) {
+      actions.schedulePreMeetingDemo(visit.id);
     }
 
     mapDemoTimer = window.setInterval(() => {
@@ -427,8 +803,10 @@ export const actions = {
   },
   stopMapDemo() {
     clearMapDemoTimer();
+    clearAssistantDemoTimers();
     cancelSpeech();
     setState('ui', 'mapDemo', initialMapDemoState());
+    setState('ui', 'meetingDemo', initialMeetingDemoState());
     setState('ui', 'activeRecommendationId', undefined);
   },
   checkGeofences() {
@@ -445,9 +823,11 @@ export const actions = {
   },
   startVisit(visitId: string) {
     setState('visits', (visit) => visit.id === visitId, 'status', 'InProgress');
+    setState('visits', (visit) => visit.id === visitId, 'startedAt', new Date().toISOString());
     setState('ui', 'activeVisitPromptId', undefined);
     addProgress(10);
     persistVisits();
+    actions.schedulePostMeetingDemo(visitId);
     actions.showToast('Visit marked in progress.');
   },
   dismissVisitPrompt() {
@@ -455,7 +835,9 @@ export const actions = {
   },
   finishInterview(visitId: string) {
     setState('visits', (visit) => visit.id === visitId, 'status', 'InterviewFinished');
+    setState('visits', (visit) => visit.id === visitId, 'finishedAt', new Date().toISOString());
     persistVisits();
+    actions.schedulePostMeetingDemo(visitId);
     actions.showToast('Interview finished. Questionnaire unlocked.');
   },
   beginQuestionnaire(visitId: string, mode: 'manual' | 'voice') {
@@ -502,6 +884,10 @@ export const actions = {
     const hadReview = Boolean(state.questionnaire.review);
     const review = interpretVisitAnswers(visit.id, account, opportunity, state.questionnaire.snapshot, state.questionnaire.answers);
     setState('questionnaire', 'review', review);
+    if (review.extraction && !state.assistant.extractions.some((item) => item.id === review.extraction?.id)) {
+      setState('assistant', 'extractions', state.assistant.extractions.length, review.extraction);
+      persistAssistant();
+    }
     if (!hadReview) addProgress(20);
   },
   updateReview(updater: (review: ReviewSummary) => ReviewSummary) {
@@ -526,6 +912,25 @@ export const actions = {
     } else {
       actions.applyReview(review);
       actions.showToast('CRM updated successfully.');
+    }
+    const writeback = createDefaultWriteback(review);
+    if (writeback) {
+      setState('assistant', 'writebacks', state.assistant.writebacks.length, writeback);
+      setState('assistant', 'kpis', state.assistant.kpis.length, {
+        id: makeId('kpi'),
+        visitId: review.visitId,
+        accountId: review.accountUpdate.accountId,
+        createdAt: new Date().toISOString(),
+        actualDurationMinutes: review.eventUpdate.durationMinutes,
+        captureQuality: review.extraction
+          ? Math.round(Object.values(review.extraction.confidence).reduce((total, value) => total + value, 0) / 5)
+          : 72,
+        tasksClosed: review.extraction?.completedTaskIds.length ?? 0,
+        tasksCreated: review.tasks.length,
+        punctualityScore: 88,
+        crmCompleteness: review.extraction?.missingFields.length ? 78 : 96,
+      });
+      persistAssistant();
     }
     setState('visits', (visit) => visit.id === review.visitId, 'status', 'Completed');
     setState('visits', (visit) => visit.id === review.visitId, 'outcome', review.eventUpdate.outcome);
@@ -578,21 +983,33 @@ export const actions = {
   },
   resetDemoActivity() {
     clearMapDemoTimer();
+    clearAssistantDemoTimers();
     cancelSpeech();
     setState('visits', visits.map((visit) => ({ ...visit })));
     setState('progress', { ...initialProgress, milestones: [] });
     setState('queue', []);
+    setState('assistant', {
+      isDemoMode: true,
+      notifications: [],
+      briefings: [],
+      extractions: [],
+      writebacks: [],
+      kpis: [],
+    });
     setState('crm', 'tasks', initialTasks.map((task) => ({ ...task })));
     setState('ui', {
       activeVisitPromptId: undefined,
+      activeAssistantNotificationId: undefined,
       toast: undefined,
       selectedClientId: undefined,
       selectedMapAccountId: undefined,
       selectedMapVisitId: undefined,
+      visitBriefingAccountId: undefined,
       activeRecommendationId: undefined,
       isCoverageLayerVisible: state.ui.isCoverageLayerVisible,
       dismissedRecommendationIds: state.ui.dismissedRecommendationIds,
       mapDemo: initialMapDemoState(),
+      meetingDemo: initialMeetingDemoState(),
       selectedManagerAgentId: state.ui.selectedManagerAgentId,
       reportingTab: state.ui.reportingTab,
       dismissedManagerInsightIds: state.ui.dismissedManagerInsightIds,
@@ -609,10 +1026,12 @@ export const actions = {
     persistProgress();
     persistQueue();
     persistTasks();
+    persistAssistant();
     actions.showToast('Demo activity reset.');
   },
   resetApp() {
     clearMapDemoTimer();
+    clearAssistantDemoTimers();
     cancelSpeech();
     storageKeys.forEach((key) => localStorage.removeItem(key));
     setState('location', { current: demoLocation, permission: 'idle', isDemo: true });
@@ -631,16 +1050,27 @@ export const actions = {
     });
     setState('progress', { ...initialProgress, milestones: [] });
     setState('queue', []);
+    setState('assistant', {
+      isDemoMode: true,
+      notifications: [],
+      briefings: [],
+      extractions: [],
+      writebacks: [],
+      kpis: [],
+    });
     setState('ui', {
       activeVisitPromptId: undefined,
+      activeAssistantNotificationId: undefined,
       toast: undefined,
       selectedClientId: undefined,
       selectedMapAccountId: undefined,
       selectedMapVisitId: undefined,
+      visitBriefingAccountId: undefined,
       activeRecommendationId: undefined,
       isCoverageLayerVisible: false,
       dismissedRecommendationIds: [],
       mapDemo: initialMapDemoState(),
+      meetingDemo: initialMeetingDemoState(),
       selectedManagerAgentId: fieldAgents[0]?.id,
       reportingTab: 'overview',
       dismissedManagerInsightIds: [],

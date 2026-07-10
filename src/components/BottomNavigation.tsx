@@ -6,7 +6,7 @@ function BottomNavigation() {
   const links = [
     { href: '/dashboard', label: 'Home', icon: Home },
     { href: '/clients', label: 'Clients', icon: UsersRound },
-    { href: '/schedule', label: 'Schedule', icon: CalendarDays },
+    { href: '/schedule', label: 'My Day', icon: CalendarDays },
     { href: '/reporting', label: 'Report', icon: ClipboardList },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];

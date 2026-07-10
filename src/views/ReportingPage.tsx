@@ -56,6 +56,15 @@ function ReportingPage() {
       </nav>
 
       <Show when={state.ui.reportingTab === 'overview'}>
+        <section class="panel">
+          <h3>AI assistant impact</h3>
+          <div class="metric-grid compact-metrics">
+            <div><span>Briefings</span><strong>{state.assistant.briefings.length}</strong></div>
+            <div><span>Debriefs</span><strong>{state.assistant.extractions.length}</strong></div>
+            <div><span>Writebacks</span><strong>{state.assistant.writebacks.length}</strong></div>
+            <div><span>CRM quality</span><strong>{state.assistant.kpis.length ? `${Math.round(state.assistant.kpis.reduce((total, item) => total + item.crmCompleteness, 0) / state.assistant.kpis.length)}%` : '0%'}</strong></div>
+          </div>
+        </section>
         <Show when={topAlert()} fallback={<section class="panel"><p>No priority alert right now.</p></section>}>
           {(alert) => (
             <section class={`panel top-alert ${alert().severity}`}>

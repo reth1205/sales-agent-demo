@@ -63,6 +63,34 @@ function ReviewPanel() {
             <span>Notes</span>
             <textarea rows={4} value={summary().eventUpdate.notes} onInput={(event) => updateEvent('notes', event.currentTarget.value)} />
           </label>
+          <Show when={summary().extraction}>
+            {(extraction) => (
+              <div class="entity-review-card">
+                <div class="entity-review-header">
+                  <span class="eyebrow">Structured extraction</span>
+                  <strong>{extraction().confidence.duration}% duration confidence</strong>
+                </div>
+                <div class="entity-chip-row">
+                  <For each={extraction().topicsDiscussed}>
+                    {(topic) => <span>{topic}</span>}
+                  </For>
+                </div>
+                <div class="summary-box">
+                  <strong>Follow-up</strong>
+                  <span>{extraction().followUpActions.map((task) => task.title).join(', ') || 'No new follow-up task detected'}</span>
+                </div>
+                <Show when={extraction().futureMeetingDate}>
+                  {(date) => <div class="summary-box"><strong>Future meeting</strong><span>{date()}</span></div>}
+                </Show>
+                <Show when={extraction().missingFields.length}>
+                  <div class="summary-box warning-box">
+                    <strong>Needs review</strong>
+                    <span>{extraction().missingFields.join(', ')}</span>
+                  </div>
+                </Show>
+              </div>
+            )}
+          </Show>
           <Show when={summary().opportunityUpdate}>
             {(opportunity) => <div class="summary-box"><strong>Opportunity</strong><span>{opportunity().stage} · {opportunity().probability}% · {opportunity().nextStep}</span></div>}
           </Show>
