@@ -9,12 +9,15 @@ function DefaultVisitBriefNotification() {
     const currentVisit = visit();
     return currentVisit ? getVisitAccount(currentVisit) : undefined;
   };
+  const hasVisibleAssistantNotification = () => state.assistant.notifications
+    .some((item) => (item.status === 'unread' || item.id === state.ui.activeAssistantNotificationId) && item.status !== 'dismissed');
   const shouldShow = () => Boolean(
     visit()
     && account()
     && !state.ui.selectedMapAccountId
     && !state.ui.visitBriefingAccountId
     && !state.ui.activeAssistantNotificationId
+    && !hasVisibleAssistantNotification()
     && !state.ui.mapDemo.isRunning
     && !state.ui.meetingDemo.isRunning,
   );

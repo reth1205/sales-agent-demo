@@ -630,13 +630,20 @@ export const actions = {
     const frames = Math.max(1, Math.round((assistantTiming.demo.preMeetingLeadSeconds * 1000) / 125));
     let frame = 0;
 
+    setState('ui', 'activeAssistantNotificationId', undefined);
+    setState('ui', 'activeVisitPromptId', undefined);
+    setState('ui', 'visitBriefingAccountId', undefined);
+
     if (visit) {
-      actions.triggerDestinationEta(visit.id, 'destinationStart');
+      setState('assistant', 'notifications', (item) =>
+        item.visitId === visit.id
+        && (item.type === 'destinationEta' || item.type === 'arrivalBriefing' || item.type === 'preMeetingBriefing'),
+      'status', 'dismissed');
+      persistAssistant();
     }
 
     setState('ui', 'selectedMapAccountId', undefined);
     setState('ui', 'selectedMapVisitId', undefined);
-    setState('ui', 'visitBriefingAccountId', undefined);
     setState('ui', 'activeRecommendationId', undefined);
     setState('ui', 'mapDemo', {
       isRunning: true,
@@ -677,9 +684,7 @@ export const actions = {
       if (progress >= 1) {
         clearMapDemoTimer();
         setState('location', { current: end, permission: 'granted', isDemo: true });
-        setState('ui', 'mapDemo', 'isRunning', false);
-        setState('ui', 'mapDemo', 'isMoving', false);
-        setState('ui', 'mapDemo', 'movementProgress', 100);
+        setState('ui', 'mapDemo', initialMapDemoState());
         if (visit) {
           actions.triggerArrivalBriefing(visit.id, 'simulatedArrival');
           setState('ui', 'activeVisitPromptId', visit.id);

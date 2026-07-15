@@ -33,7 +33,6 @@ function ClientVisitStartDialog() {
   const startDemo = () => {
     const selected = account();
     if (!selected) return;
-    actions.clearMapSelection();
     actions.startClientDestinationDemo(selected.id);
   };
 
