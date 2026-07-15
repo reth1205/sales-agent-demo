@@ -14,7 +14,7 @@ function ReviewPanel() {
   const review = () => state.questionnaire.review;
   const [isSyncing, setIsSyncing] = createSignal(false);
   const [syncStepIndex, setSyncStepIndex] = createSignal(0);
-  const syncTimers: ReturnType<typeof window.setTimeout>[] = [];
+  const syncTimers: ReturnType<typeof setTimeout>[] = [];
   const updateEvent = (field: keyof ReviewSummary['eventUpdate'], value: string) => {
     actions.updateReview((current) => ({
       ...current,
@@ -55,7 +55,7 @@ function ReviewPanel() {
     },
   ];
   const clearSyncTimers = () => {
-    syncTimers.forEach((timer) => window.clearTimeout(timer));
+    syncTimers.forEach((timer) => clearTimeout(timer));
     syncTimers.length = 0;
   };
   const confirmWithSalesforceSimulation = () => {
@@ -65,9 +65,9 @@ function ReviewPanel() {
     actions.showToast('Connecting to Salesforce...');
 
     salesforceSteps.slice(1).forEach((_, index) => {
-      syncTimers.push(window.setTimeout(() => setSyncStepIndex(index + 1), 760 * (index + 1)));
+      syncTimers.push(setTimeout(() => setSyncStepIndex(index + 1), 760 * (index + 1)));
     });
-    syncTimers.push(window.setTimeout(() => {
+    syncTimers.push(setTimeout(() => {
       actions.confirmReview();
       clearSyncTimers();
     }, 760 * salesforceSteps.length));

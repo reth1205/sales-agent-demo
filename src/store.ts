@@ -183,24 +183,24 @@ const loadVisitsWithDefaults = () => {
   return nextVisits;
 };
 
-let mapDemoTimer: ReturnType<typeof window.setInterval> | undefined;
-let preMeetingDemoTimer: ReturnType<typeof window.setTimeout> | undefined;
-let postMeetingDemoTimer: ReturnType<typeof window.setInterval> | undefined;
+let mapDemoTimer: ReturnType<typeof setInterval> | undefined;
+let preMeetingDemoTimer: ReturnType<typeof setTimeout> | undefined;
+let postMeetingDemoTimer: ReturnType<typeof setInterval> | undefined;
 let notificationAudioContext: AudioContext | undefined;
 
 const clearMapDemoTimer = () => {
   if (!mapDemoTimer) return;
-  window.clearInterval(mapDemoTimer);
+  clearInterval(mapDemoTimer);
   mapDemoTimer = undefined;
 };
 
 const clearAssistantDemoTimers = () => {
   if (preMeetingDemoTimer) {
-    window.clearTimeout(preMeetingDemoTimer);
+    clearTimeout(preMeetingDemoTimer);
     preMeetingDemoTimer = undefined;
   }
   if (postMeetingDemoTimer) {
-    window.clearInterval(postMeetingDemoTimer);
+    clearInterval(postMeetingDemoTimer);
     postMeetingDemoTimer = undefined;
   }
   setState('ui', 'meetingDemo', initialMeetingDemoState());
@@ -389,7 +389,7 @@ export const actions = {
   },
   showToast(message: string) {
     setState('ui', 'toast', message);
-    window.setTimeout(() => setState('ui', 'toast', undefined), 2600);
+    setTimeout(() => setState('ui', 'toast', undefined), 2600);
   },
   openAssistantNotification(notificationId: string) {
     const notification = state.assistant.notifications.find((item) => item.id === notificationId);
@@ -485,15 +485,15 @@ export const actions = {
   schedulePreMeetingDemo(visitId: string) {
     if (!state.assistant.isDemoMode) return;
     if (state.assistant.notifications.some((item) => item.id === `pre-${visitId}` && item.status !== 'dismissed')) return;
-    if (preMeetingDemoTimer) window.clearTimeout(preMeetingDemoTimer);
-    preMeetingDemoTimer = window.setTimeout(() => {
+    if (preMeetingDemoTimer) clearTimeout(preMeetingDemoTimer);
+    preMeetingDemoTimer = setTimeout(() => {
       preMeetingDemoTimer = undefined;
       actions.triggerPreMeetingBriefing(visitId, 'demoTimer');
     }, assistantTiming.demo.preMeetingLeadSeconds * 1000);
   },
   schedulePostMeetingDemo(visitId: string) {
     if (!state.assistant.isDemoMode) return;
-    if (postMeetingDemoTimer) window.clearInterval(postMeetingDemoTimer);
+    if (postMeetingDemoTimer) clearInterval(postMeetingDemoTimer);
     const durationSeconds = assistantTiming.demo.postMeetingWindowSeconds;
     const tickMs = 125;
     const frames = Math.max(1, Math.round((durationSeconds * 1000) / tickMs));
@@ -505,7 +505,7 @@ export const actions = {
       elapsedSeconds: 0,
       durationSeconds,
     });
-    postMeetingDemoTimer = window.setInterval(() => {
+    postMeetingDemoTimer = setInterval(() => {
       frame += 1;
       const progress = Math.min(frame / frames, 1);
       setState('ui', 'meetingDemo', {
@@ -516,7 +516,7 @@ export const actions = {
         durationSeconds,
       });
       if (progress < 1) return;
-      if (postMeetingDemoTimer) window.clearInterval(postMeetingDemoTimer);
+      if (postMeetingDemoTimer) clearInterval(postMeetingDemoTimer);
       postMeetingDemoTimer = undefined;
       setState('ui', 'meetingDemo', initialMeetingDemoState());
       actions.triggerPostMeetingDebrief(visitId, 'meetingTimer');
@@ -618,7 +618,7 @@ export const actions = {
   openNavigation(accountId: string) {
     const account = state.crm.accounts.find((item) => item.id === accountId);
     if (!account) return;
-    window.open(buildNavigationUrl(account), '_blank', 'noopener,noreferrer');
+    globalThis.open(buildNavigationUrl(account), '_blank', 'noopener,noreferrer');
   },
   startClientDestinationDemo(accountId: string) {
     clearMapDemoTimer();
@@ -656,7 +656,7 @@ export const actions = {
     setState('location', { current: start, permission: 'granted', isDemo: true });
     speakText(`You are 15 minutes away from your destination with ${account.name}.`, 'en-US');
 
-    mapDemoTimer = window.setInterval(() => {
+    mapDemoTimer = setInterval(() => {
       if (!state.ui.mapDemo.isRunning) {
         clearMapDemoTimer();
         return;
@@ -754,7 +754,7 @@ export const actions = {
       actions.schedulePreMeetingDemo(visit.id);
     }
 
-    mapDemoTimer = window.setInterval(() => {
+    mapDemoTimer = setInterval(() => {
       if (!state.ui.mapDemo.isRunning) {
         clearMapDemoTimer();
         return;

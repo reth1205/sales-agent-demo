@@ -1,5 +1,5 @@
 import { Bot, CheckCircle2, ClipboardList, LoaderCircle, Mic, MicOff, Sparkles } from 'lucide-solid';
-import { createSignal, For, onCleanup, Show } from 'solid-js';
+import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js';
 import { getVisitAccount } from '../selectors';
 import { actions, state } from '../store';
 
@@ -27,23 +27,25 @@ function QuestionnaireStepper() {
     const currentVisit = visit();
     return currentVisit ? getVisitAccount(currentVisit) : undefined;
   };
-  const [speechSupported] = createSignal(Boolean((window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).SpeechRecognition || (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).webkitSpeechRecognition));
+  const [speechSupported] = createSignal(Boolean((globalThis as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).SpeechRecognition || (globalThis as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).webkitSpeechRecognition));
   const [isListening, setIsListening] = createSignal(false);
   const [isAnalyzing, setIsAnalyzing] = createSignal(false);
   const [aiStepIndex, setAiStepIndex] = createSignal(0);
   const [interimTranscript, setInterimTranscript] = createSignal('');
+  const [isVoiceDisabled, setIsVoiceDisabled] = createSignal(false);
   let recognition: SpeechRecognitionLike | undefined;
-  const aiTimers: ReturnType<typeof window.setTimeout>[] = [];
+  let attemptedAutoStart = false;
+  const aiTimers: ReturnType<typeof setTimeout>[] = [];
 
   const transcript = () => state.questionnaire.answers[VOICE_NOTE_ID] ?? '';
   const hasTranscript = () => Boolean(transcript().trim());
   const clearAiTimers = () => {
-    aiTimers.forEach((timer) => window.clearTimeout(timer));
+    aiTimers.forEach((timer) => clearTimeout(timer));
     aiTimers.length = 0;
   };
   const getSpeechCtor = () =>
-    (window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }).SpeechRecognition
-      ?? (window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }).webkitSpeechRecognition;
+    (globalThis as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }).SpeechRecognition
+      ?? (globalThis as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }).webkitSpeechRecognition;
   const updateTranscript = (value: string) => actions.updateAnswer(VOICE_NOTE_ID, value);
   const appendTranscript = (value: string) => {
     const cleanValue = value.trim();
@@ -56,6 +58,10 @@ function QuestionnaireStepper() {
     setInterimTranscript('');
     recognition?.stop?.();
     recognition = undefined;
+  };
+  const disableVoiceCapture = () => {
+    setIsVoiceDisabled(true);
+    stopVoiceCapture();
   };
   const startVoiceCapture = () => {
     const SpeechCtor = getSpeechCtor();
@@ -94,6 +100,7 @@ function QuestionnaireStepper() {
     };
 
     try {
+      setIsVoiceDisabled(false);
       recognition.start();
       setIsListening(true);
     } catch {
@@ -114,13 +121,19 @@ function QuestionnaireStepper() {
     actions.showToast('AI is extracting Salesforce updates...');
 
     aiReviewSteps.slice(1).forEach((_, index) => {
-      aiTimers.push(window.setTimeout(() => setAiStepIndex(index + 1), 720 * (index + 1)));
+      aiTimers.push(setTimeout(() => setAiStepIndex(index + 1), 720 * (index + 1)));
     });
-    aiTimers.push(window.setTimeout(() => {
+    aiTimers.push(setTimeout(() => {
       actions.buildReview();
       clearAiTimers();
     }, 720 * aiReviewSteps.length));
   };
+
+  createEffect(() => {
+    if (attemptedAutoStart || !state.questionnaire.visitId || review() || !speechSupported() || isVoiceDisabled()) return;
+    attemptedAutoStart = true;
+    setTimeout(startVoiceCapture, 180);
+  });
 
   onCleanup(() => {
     stopVoiceCapture();
@@ -153,10 +166,10 @@ function QuestionnaireStepper() {
               class={isListening() ? 'secondary-action wide' : 'primary-action wide'}
               aria-pressed={isListening()}
               disabled={!speechSupported()}
-              onClick={() => (isListening() ? stopVoiceCapture() : startVoiceCapture())}
+              onClick={() => (isListening() ? disableVoiceCapture() : startVoiceCapture())}
             >
               {isListening() ? <MicOff size={18} /> : <Mic size={18} />}
-              {isListening() ? 'Stop microphone' : 'Open microphone'}
+              {isListening() ? 'Turn off microphone' : 'Turn microphone back on'}
             </button>
             <button class="secondary-action wide" disabled={isListening()} onClick={useDemoTranscript}>
               <Sparkles size={18} />

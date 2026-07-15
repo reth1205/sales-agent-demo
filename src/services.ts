@@ -406,24 +406,24 @@ export const interpretVisitAnswers = (
 };
 
 export const speakText = (text: string, lang = 'en-US') => {
-  if (!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
+  if (!('speechSynthesis' in globalThis)) return;
+  globalThis.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = lang;
-  window.speechSynthesis.speak(utterance);
+  globalThis.speechSynthesis.speak(utterance);
 };
 
 export const cancelSpeech = () => {
-  if (!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
+  if (!('speechSynthesis' in globalThis)) return;
+  globalThis.speechSynthesis.cancel();
 };
 
 export const pauseSpeech = () => {
-  if (!('speechSynthesis' in window)) return;
-  window.speechSynthesis.pause();
+  if (!('speechSynthesis' in globalThis)) return;
+  globalThis.speechSynthesis.pause();
 };
 
 export const resumeSpeech = () => {
-  if (!('speechSynthesis' in window)) return;
-  window.speechSynthesis.resume();
+  if (!('speechSynthesis' in globalThis)) return;
+  globalThis.speechSynthesis.resume();
 };
