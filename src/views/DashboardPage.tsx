@@ -2,6 +2,7 @@ import { Layers } from 'lucide-solid';
 import AssistantNotificationSheet from '../components/AssistantNotificationSheet';
 import AssistantTopNotification from '../components/AssistantTopNotification';
 import ClientVisitStartDialog from '../components/ClientVisitStartDialog';
+import DefaultVisitBriefNotification from '../components/DefaultVisitBriefNotification';
 import MapView from '../components/MapView';
 import MeetingSimulationBanner from '../components/MeetingSimulationBanner';
 import RouteSimulationBanner from '../components/RouteSimulationBanner';
@@ -13,6 +14,7 @@ function DashboardPage() {
     <>
       <MapView />
       <div class="dashboard-overlay top">
+        <DefaultVisitBriefNotification />
         <AssistantTopNotification />
         <RouteSimulationBanner />
         <MeetingSimulationBanner />

@@ -24,6 +24,36 @@ function ReviewPanel() {
       },
     }));
   };
+  const salesforceUpdateList = (summary: ReviewSummary) => [
+    {
+      label: 'Opportunity',
+      value: summary.opportunityUpdate
+        ? `${summary.opportunityUpdate.stage} - ${summary.opportunityUpdate.probability}% - ${summary.opportunityUpdate.nextStep}`
+        : 'No opportunity change detected',
+    },
+    {
+      label: 'Task',
+      value: summary.tasks.length
+        ? summary.tasks.map((task) => `${task.title} (${task.priority ?? 'Medium'})`).join(', ')
+        : 'No new task detected',
+    },
+    {
+      label: 'Meeting',
+      value: `${summary.eventUpdate.outcome}. ${summary.eventUpdate.durationMinutes} minutes. ${summary.extraction?.futureMeetingDate ? `Next meeting: ${summary.extraction.futureMeetingDate}.` : 'No next meeting date detected.'}`,
+    },
+    {
+      label: 'Contact',
+      value: summary.accountUpdate.notes !== 'No major account data change.'
+        ? summary.accountUpdate.notes
+        : 'No contact update detected',
+    },
+    {
+      label: 'Risk',
+      value: summary.accountUpdate.risks.length
+        ? summary.accountUpdate.risks.join(', ')
+        : 'No risk detected',
+    },
+  ];
   const clearSyncTimers = () => {
     syncTimers.forEach((timer) => window.clearTimeout(timer));
     syncTimers.length = 0;
@@ -67,8 +97,18 @@ function ReviewPanel() {
             {(extraction) => (
               <div class="entity-review-card">
                 <div class="entity-review-header">
-                  <span class="eyebrow">Structured extraction</span>
-                  <strong>{extraction().confidence.duration}% duration confidence</strong>
+                  <span class="eyebrow">AI Salesforce extraction</span>
+                  <strong>{extraction().confidence.topics}% signal confidence</strong>
+                </div>
+                <div class="salesforce-update-list">
+                  <For each={salesforceUpdateList(summary())}>
+                    {(item) => (
+                      <div class="salesforce-update-row">
+                        <strong>{item.label}</strong>
+                        <span>{item.value}</span>
+                      </div>
+                    )}
+                  </For>
                 </div>
                 <div class="entity-chip-row">
                   <For each={extraction().topicsDiscussed}>

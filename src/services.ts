@@ -272,6 +272,21 @@ export const buildMapDemoSteps = (
 export const getActiveQuestions = (questions: InterviewQuestion[]) =>
   [...questions].filter((question) => question.isActive).sort((a, b) => a.order - b.order);
 
+const combineDebriefText = (questions: InterviewQuestion[], answers: Record<string, string>) => {
+  const questionIds = new Set(questions.map((question) => question.id));
+  const promptedAnswers = questions
+    .map((question) => {
+      const answer = answers[question.id]?.trim();
+      return answer ? `${question.prompt} ${answer}` : '';
+    })
+    .filter(Boolean);
+  const freeformAnswers = Object.entries(answers)
+    .filter(([questionId, answer]) => !questionIds.has(questionId) && answer.trim())
+    .map(([, answer]) => answer.trim());
+
+  return [...promptedAnswers, ...freeformAnswers].join(' ').trim();
+};
+
 const splitTopics = (combined: string, account: Account, opportunity: Opportunity | undefined) => {
   const normalized = combined.toLowerCase();
   const topics = [
@@ -293,7 +308,7 @@ export const extractPostMeetingEntities = (
   questions: InterviewQuestion[],
   answers: Record<string, string>,
 ): PostMeetingExtraction => {
-  const combined = questions.map((question) => `${question.prompt} ${answers[question.id] ?? ''}`).join(' ').trim();
+  const combined = combineDebriefText(questions, answers);
   const normalized = combined.toLowerCase();
   const durationMatch = normalized.match(/(\d+)\s*(minute|min|minutes|mins|hour|hours)/);
   const durationMinutes = durationMatch
@@ -303,11 +318,11 @@ export const extractPostMeetingEntities = (
     : 30;
   const followUpActions: Task[] = [];
 
-  if (/(follow up|send|call|schedule|next week|proposal|quote|meeting)/i.test(combined)) {
+  if (/(task|follow up|send|call|schedule|next week|proposal|quote|meeting)/i.test(combined)) {
     followUpActions.push({
       id: makeId('task'),
       accountId: account.id,
-      title: normalized.includes('proposal') || normalized.includes('quote') ? 'Send updated proposal' : 'Follow up with customer',
+      title: normalized.includes('proposal') || normalized.includes('quote') ? 'Send updated proposal' : normalized.includes('task') ? 'Complete customer action item' : 'Follow up with customer',
       dueDate: normalized.includes('next week') ? '2026-06-22' : '2026-06-18',
       owner: 'Sofia Rivera',
       status: 'Open',
@@ -324,7 +339,7 @@ export const extractPostMeetingEntities = (
   const missingFields = [
     combined ? undefined : 'meeting notes',
     durationMatch ? undefined : 'visit duration',
-    /(follow up|next|schedule|call|send)/i.test(combined) ? undefined : 'follow-up action',
+    /(task|follow up|next|schedule|call|send)/i.test(combined) ? undefined : 'follow-up action',
   ].filter((field): field is string => Boolean(field));
 
   return {
@@ -337,8 +352,8 @@ export const extractPostMeetingEntities = (
     opportunityUpdate: opportunity
       ? {
           opportunityId: opportunity.id,
-          stage: normalized.includes('proposal') ? 'Proposal' : normalized.includes('negotiation') ? 'Negotiation' : opportunity.stage,
-          probability: normalized.includes('budget') || normalized.includes('timeline') ? Math.min(opportunity.probability + 10, 90) : opportunity.probability,
+          stage: normalized.includes('proposal') ? 'Proposal' : normalized.includes('negotiation') ? 'Negotiation' : normalized.includes('opportunity') ? opportunity.stage : opportunity.stage,
+          probability: normalized.includes('budget') || normalized.includes('timeline') || normalized.includes('opportunity') ? Math.min(opportunity.probability + 10, 90) : opportunity.probability,
           nextStep: normalized.includes('next week') ? 'Follow up next week' : opportunity.nextStep,
         }
       : undefined,
@@ -363,7 +378,7 @@ export const interpretVisitAnswers = (
   questions: InterviewQuestion[],
   answers: Record<string, string>,
 ): ReviewSummary => {
-  const combined = questions.map((question) => `${question.prompt} ${answers[question.id] ?? ''}`).join(' ');
+  const combined = combineDebriefText(questions, answers);
   const normalized = combined.toLowerCase();
   const extraction = extractPostMeetingEntities(visitId, account, opportunity, questions, answers);
 
@@ -380,7 +395,9 @@ export const interpretVisitAnswers = (
       accountId: account.id,
       status: normalized.includes('risk') || normalized.includes('escalation') ? 'Needs attention' : account.status,
       risks: normalized.includes('risk') || normalized.includes('escalation') ? [...account.risks, 'New risk mentioned during visit'] : [...account.risks],
-      notes: normalized.includes('stakeholder') ? 'New stakeholder identified during meeting.' : 'No major account data change.',
+      notes: normalized.includes('contact') || normalized.includes('champion') || normalized.includes('stakeholder') || normalized.includes('procurement')
+        ? 'Contact or stakeholder update captured during meeting.'
+        : 'No major account data change.',
     },
     tasks: extraction.followUpActions,
     attachments: normalized.includes('screenshot') || normalized.includes('photo') ? ['Visit evidence screenshot'] : [],
