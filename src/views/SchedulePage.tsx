@@ -31,7 +31,7 @@ function SchedulePage() {
                     <Show when={assistantNotification() || briefing()}>
                       <span class="assistant-row-signal">
                         <Bot size={13} />
-                        {assistantNotification()?.type === 'postMeetingDebrief' ? 'Debrief ready' : 'AI briefing ready'}
+                        {assistantNotification()?.type === 'postMeetingDebrief' ? 'Listening ready' : 'AI briefing ready'}
                       </span>
                     </Show>
                   </div>

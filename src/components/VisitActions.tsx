@@ -17,7 +17,7 @@ function VisitActions(props: { visit: ScheduledVisit }) {
         <button class="primary-action" onClick={() => actions.finishInterview(visit().id)}>Finish Interview</button>
       </Show>
       <Show when={visit().status === 'InterviewFinished' || visit().status === 'Questionnaire'}>
-        <button class="primary-action" onClick={() => { actions.beginQuestionnaire(visit().id, 'manual'); navigate(`/visits/${visit().id}/questionnaire`); }}>Open Questionnaire</button>
+        <button class="primary-action" onClick={() => { actions.beginQuestionnaire(visit().id, 'manual'); navigate(`/visits/${visit().id}/questionnaire`); }}>Open Post Interview</button>
       </Show>
     </div>
   );

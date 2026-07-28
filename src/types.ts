@@ -120,6 +120,19 @@ export type PreMeetingBriefing = {
   riskLevel: 'Low' | 'Medium' | 'High';
 };
 
+export type VisitObjectiveStatus = 'met' | 'partial' | 'missed';
+
+export type VisitObjectiveItem = {
+  id: string;
+  label: string;
+  detail: string;
+};
+
+export type VisitObjectiveAssessment = VisitObjectiveItem & {
+  status: VisitObjectiveStatus;
+  evidence: string;
+};
+
 export type ExtractionConfidence = {
   duration: number;
   topics: number;
@@ -241,6 +254,7 @@ export type ReviewSummary = {
   };
   tasks: Task[];
   attachments: string[];
+  objectiveChecklist: VisitObjectiveAssessment[];
   extraction?: PostMeetingExtraction;
   writebackId?: string;
 };

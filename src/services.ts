@@ -17,6 +17,8 @@ import type {
   ReviewSummary,
   ScheduledVisit,
   Task,
+  VisitObjectiveAssessment,
+  VisitObjectiveItem,
 } from './types';
 
 export const assistantTiming = {
@@ -243,6 +245,115 @@ export const buildPreMeetingBriefing = (
   };
 };
 
+type VisitObjectiveDefinition = VisitObjectiveItem & {
+  requiredSignals: string[][];
+  partialEvidence: string;
+  missedEvidence: string;
+};
+
+export const buildVisitObjectives = (
+  account: Account,
+  opportunity: Opportunity | undefined,
+): VisitObjectiveItem[] => {
+  const opportunityName = opportunity?.name ?? 'active opportunity';
+  const opportunityValue = opportunity ? formatCurrency(opportunity.amount) : 'the open pipeline';
+
+  return [
+    {
+      id: 'approval',
+      label: 'Confirm approval path',
+      detail: 'Validate budget, contract approval, and who still needs to sign off.',
+    },
+    {
+      id: 'opportunity',
+      label: 'Review opportunity movement',
+      detail: `Clarify next stage and next step for ${opportunityName} (${opportunityValue}).`,
+    },
+    {
+      id: 'timeline',
+      label: 'Validate implementation timing',
+      detail: 'Capture rollout, delivery, or implementation timeline concerns.',
+    },
+    {
+      id: 'stakeholders',
+      label: 'Update stakeholders',
+      detail: `Confirm champion, procurement, or decision-maker changes at ${account.name}.`,
+    },
+    {
+      id: 'follow-up',
+      label: 'Lock next commitments',
+      detail: 'Capture tasks, proposal/pricing follow-up, and the next meeting date.',
+    },
+  ];
+};
+
+const buildVisitObjectiveDefinitions = (
+  account: Account,
+  opportunity: Opportunity | undefined,
+): VisitObjectiveDefinition[] => {
+  const objectives = buildVisitObjectives(account, opportunity);
+  return [
+    {
+      ...objectives[0],
+      requiredSignals: [['budget', 'approval', 'approved', 'contract', 'sign off', 'signoff']],
+      partialEvidence: 'Approval was mentioned, but the final owner or path is unclear.',
+      missedEvidence: 'No clear budget or contract approval signal captured.',
+    },
+    {
+      ...objectives[1],
+      requiredSignals: [['opportunity', 'proposal', 'pilot', 'renewal', opportunity?.stage.toLowerCase() ?? 'stage']],
+      partialEvidence: 'Opportunity context was mentioned without a clear stage or next step.',
+      missedEvidence: 'No clear opportunity update captured.',
+    },
+    {
+      ...objectives[2],
+      requiredSignals: [['timeline', 'implementation', 'rollout', 'delivery', 'schedule']],
+      partialEvidence: 'Timing came up, but the risk or date needs confirmation.',
+      missedEvidence: 'No implementation or delivery timing signal captured.',
+    },
+    {
+      ...objectives[3],
+      requiredSignals: [['champion', 'procurement', 'stakeholder', 'contact', 'decision maker', 'decision-maker']],
+      partialEvidence: 'A stakeholder was mentioned without a role change or action.',
+      missedEvidence: 'No stakeholder or contact update captured.',
+    },
+    {
+      ...objectives[4],
+      requiredSignals: [['task', 'follow up', 'send', 'next week', 'meeting', 'pricing', 'proposal']],
+      partialEvidence: 'A next step was mentioned, but date or owner needs review.',
+      missedEvidence: 'No clear next commitment captured.',
+    },
+  ];
+};
+
+export const evaluateVisitObjectives = (
+  combined: string,
+  account: Account,
+  opportunity: Opportunity | undefined,
+): VisitObjectiveAssessment[] => {
+  const normalized = combined.toLowerCase();
+  return buildVisitObjectiveDefinitions(account, opportunity).map((objective) => {
+    const matchedSignals = objective.requiredSignals
+      .map((signals) => signals.filter((signal) => normalized.includes(signal)))
+      .filter((signals) => signals.length);
+    const matchCount = matchedSignals.reduce((total, signals) => total + signals.length, 0);
+    const status = matchCount >= 2 ? 'met' : matchCount === 1 ? 'partial' : 'missed';
+    const evidence = status === 'met'
+      ? `Detected: ${matchedSignals.flat().slice(0, 3).join(', ')}.`
+      : status === 'partial'
+        ? objective.partialEvidence
+        : objective.missedEvidence;
+
+    return {
+      id: objective.id,
+      label: objective.label,
+      detail: objective.detail,
+      status,
+      evidence,
+    };
+  });
+};
+
 export const buildMapDemoSteps = (
   accounts: Account[],
   visits: ScheduledVisit[],
@@ -403,6 +514,7 @@ export const interpretVisitAnswers = (
     },
     tasks: extraction.followUpActions,
     attachments: normalized.includes('screenshot') || normalized.includes('photo') ? ['Visit evidence screenshot'] : [],
+    objectiveChecklist: evaluateVisitObjectives(combined, account, opportunity),
     extraction,
   };
 };

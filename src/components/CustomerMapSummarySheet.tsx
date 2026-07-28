@@ -100,7 +100,7 @@ function CustomerMapSummarySheet() {
                   <Show when={selectedVisit().status === 'InterviewFinished' || selectedVisit().status === 'Questionnaire'}>
                     <button class="primary-action" onClick={openQuestionnaire}>
                       <ClipboardList size={17} />
-                      Open Questionnaire
+                      Open Post Interview
                     </button>
                   </Show>
                 </div>

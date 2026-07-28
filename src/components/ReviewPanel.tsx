@@ -1,4 +1,4 @@
-import { CheckCircle2, Cloud, LoaderCircle, Save } from 'lucide-solid';
+import { AlertCircle, CheckCircle2, Circle, Cloud, LoaderCircle, Save } from 'lucide-solid';
 import { createSignal, For, onCleanup, Show } from 'solid-js';
 import { actions, state } from '../store';
 import type { ReviewSummary } from '../types';
@@ -9,6 +9,12 @@ const salesforceSteps = [
   'Syncing opportunity and follow-up tasks',
   'Salesforce update complete',
 ];
+
+const objectiveStatusLabels = {
+  met: 'Met',
+  partial: 'Needs review',
+  missed: 'Missing',
+};
 
 function ReviewPanel() {
   const review = () => state.questionnaire.review;
@@ -54,6 +60,12 @@ function ReviewPanel() {
         : 'No risk detected',
     },
   ];
+  const objectiveCompletion = (summary: ReviewSummary) => {
+    const total = summary.objectiveChecklist.length;
+    if (!total) return '0/0';
+    const met = summary.objectiveChecklist.filter((item) => item.status === 'met').length;
+    return `${met}/${total}`;
+  };
   const clearSyncTimers = () => {
     syncTimers.forEach((timer) => clearTimeout(timer));
     syncTimers.length = 0;
@@ -80,7 +92,38 @@ function ReviewPanel() {
       {(summary) => (
         <section class="panel review-panel">
           <span class="eyebrow">Review summary</span>
-          <h2>CRM updates</h2>
+          <h2>Objective checklist</h2>
+          <div class="objective-review-card">
+            <div class="objective-review-header">
+              <strong>{objectiveCompletion(summary())} objectives met</strong>
+              <span>Checked against the original visit brief.</span>
+            </div>
+            <div class="objective-review-list">
+              <For each={summary().objectiveChecklist}>
+                {(item) => (
+                  <div class={`objective-review-item ${item.status}`}>
+                    <div class="objective-review-icon">
+                      <Show
+                        when={item.status === 'met'}
+                        fallback={item.status === 'partial' ? <AlertCircle size={17} /> : <Circle size={17} />}
+                      >
+                        <CheckCircle2 size={17} />
+                      </Show>
+                    </div>
+                    <div>
+                      <div class="objective-review-title">
+                        <strong>{item.label}</strong>
+                        <span>{objectiveStatusLabels[item.status]}</span>
+                      </div>
+                      <p>{item.detail}</p>
+                      <small>{item.evidence}</small>
+                    </div>
+                  </div>
+                )}
+              </For>
+            </div>
+          </div>
+          <span class="eyebrow">CRM updates</span>
           <label class="field">
             <span>Outcome</span>
             <input value={summary().eventUpdate.outcome} onInput={(event) => updateEvent('outcome', event.currentTarget.value)} />

@@ -452,6 +452,54 @@ span {
   font-weight: 700;
 }
 
+.visit-objective-intro {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  padding: 10px;
+  color: #075c68;
+  background: #eef7f8;
+  border: 1px solid #c9e8ec;
+  border-radius: 8px;
+}
+
+.visit-objective-intro svg {
+  color: #0f6c7a;
+}
+
+.visit-objective-list {
+  display: grid;
+  gap: 8px;
+}
+
+.visit-objective-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  padding: 10px;
+  background: #f7fafb;
+  border: 1px solid #edf1f4;
+  border-radius: 8px;
+}
+
+.visit-objective-item svg {
+  margin-top: 1px;
+  color: #2c8a52;
+}
+
+.visit-objective-item div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.visit-objective-item span {
+  color: #34444f;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
 .visit-ready-line {
   padding: 9px 10px;
   color: #075c68;
@@ -1403,6 +1451,119 @@ textarea {
   border-radius: 999px;
   font-size: 11px;
   font-weight: 900;
+}
+
+.objective-review-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid #d9e1e7;
+  border-radius: 8px;
+}
+
+.objective-review-header {
+  display: grid;
+  gap: 2px;
+}
+
+.objective-review-header strong {
+  color: #15202b;
+}
+
+.objective-review-header span {
+  color: #5d6b78;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.objective-review-list {
+  display: grid;
+  gap: 8px;
+}
+
+.objective-review-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  padding: 10px;
+  background: #f7fafb;
+  border: 1px solid #edf1f4;
+  border-radius: 8px;
+}
+
+.objective-review-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #e8edf1;
+}
+
+.objective-review-item.met .objective-review-icon {
+  color: #2c8a52;
+  background: #e4f5eb;
+}
+
+.objective-review-item.partial .objective-review-icon {
+  color: #9f6b05;
+  background: #fff3c4;
+}
+
+.objective-review-item.missed .objective-review-icon {
+  color: #8d9aa6;
+  background: #edf1f4;
+}
+
+.objective-review-item > div:last-child {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.objective-review-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.objective-review-title strong {
+  color: #15202b;
+  font-size: 13px;
+}
+
+.objective-review-title span {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  color: #075c68;
+  background: #dff6f8;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.objective-review-item.partial .objective-review-title span {
+  color: #765100;
+  background: #fff3c4;
+}
+
+.objective-review-item.missed .objective-review-title span {
+  color: #6b7785;
+  background: #edf1f4;
+}
+
+.objective-review-item p,
+.objective-review-item small {
+  color: #34444f;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.objective-review-item small {
+  color: #5d6b78;
 }
 
 .voice-debrief-panel .questionnaire-topbar {
@@ -2635,6 +2796,7 @@ span,
 .demo-voice-line span,
 .details-toggle,
 .salesforce-update-row strong,
+.objective-review-title span,
 .entity-chip-row span {
   color: #7dd3fc;
 }
@@ -2643,6 +2805,7 @@ span,
 .assistant-summary,
 .assistant-briefing-copy,
 .visit-ready-line,
+.visit-objective-intro,
 .assistant-brief-grid div {
   color: var(--text-soft);
   background: rgba(14, 116, 144, 0.2);
@@ -2657,12 +2820,16 @@ span,
 }
 
 .assistant-meta-row span,
-.entity-chip-row span {
+.entity-chip-row span,
+.objective-review-title span {
   background: rgba(56, 189, 248, 0.14);
 }
 
 .summary-two-column > div,
 .salesforce-update-row,
+.visit-objective-item,
+.objective-review-card,
+.objective-review-item,
 .territory-grid div,
 .schedule-row.expanded,
 .voice-card,
@@ -2676,6 +2843,7 @@ span,
 .timeline-item,
 .context-box,
 .summary-box,
+.objective-review-icon,
 .question-card,
 .coverage-row,
 .insight-card,

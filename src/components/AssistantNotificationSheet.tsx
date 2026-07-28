@@ -55,7 +55,7 @@ function AssistantNotificationSheet() {
             <div class="assistant-title">
               <Bot size={19} />
               <div>
-                <span class="eyebrow">{isBriefing() ? 'AI briefing' : 'AI debrief'}</span>
+                <span class="eyebrow">{isBriefing() ? 'AI briefing' : 'Post interview'}</span>
                 <h2>{active().title}</h2>
               </div>
             </div>
@@ -80,12 +80,12 @@ function AssistantNotificationSheet() {
           </Show>
 
           <Show when={active().type === 'postMeetingDebrief'}>
-            <button class="voice-activation-button" onClick={openDebrief} aria-label={`Start voice debrief for ${account()?.name ?? 'this visit'}`}>
+            <button class="voice-activation-button" onClick={openDebrief} aria-label={`Start post-interview listening for ${account()?.name ?? 'this visit'}`}>
               <span class="voice-activation-rings" aria-hidden="true" />
               <span class="voice-activation-core">
                 <Mic size={38} />
               </span>
-              <span class="voice-activation-label">Activate voice</span>
+              <span class="voice-activation-label">Start listening</span>
             </button>
           </Show>
 

@@ -37,15 +37,15 @@ function AssistantTopNotification() {
                 {isEta(active) ? <Clock size={18} /> : isArrival(active) ? <BellRing size={18} /> : <Bot size={18} />}
               </div>
               <button class="assistant-top-copy" onClick={() => openNotification(active)}>
-                <span class="eyebrow">{isEta(active) ? 'Route alert' : isArrival(active) ? 'Arrival detected' : 'AI debrief ready'}</span>
+                <span class="eyebrow">{isEta(active) ? 'Route alert' : isArrival(active) ? 'Arrival detected' : 'Listening ready'}</span>
                 <strong>
                   {isEta(active)
                     ? `You are 15 minutes away from your destination with ${account(active)?.name ?? 'your customer'}.`
                     : isArrival(active)
                       ? `Looks like you're almost at ${account(active)?.name ?? 'Global Retail'}.`
-                      : `You can now capture the debrief for ${account(active)?.name ?? 'the visit'}.`}
+                      : `You can now listen for post-interview objectives at ${account(active)?.name ?? 'the visit'}.`}
                 </strong>
-                <span>{isEta(active) ? 'I will notify you on arrival' : isArrival(active) ? "See what matters today" : 'Open voice capture'}</span>
+                <span>{isEta(active) ? 'I will notify you on arrival' : isArrival(active) ? "See what matters today" : 'Open listening'}</span>
               </button>
               <button class="icon-button" title="Dismiss assistant alert" onClick={() => actions.dismissAssistantNotification(active.id)}>
                 <X size={16} />

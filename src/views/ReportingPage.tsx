@@ -60,7 +60,7 @@ function ReportingPage() {
           <h3>AI assistant impact</h3>
           <div class="metric-grid compact-metrics">
             <div><span>Briefings</span><strong>{state.assistant.briefings.length}</strong></div>
-            <div><span>Debriefs</span><strong>{state.assistant.extractions.length}</strong></div>
+            <div><span>Post checks</span><strong>{state.assistant.extractions.length}</strong></div>
             <div><span>Writebacks</span><strong>{state.assistant.writebacks.length}</strong></div>
             <div><span>CRM quality</span><strong>{state.assistant.kpis.length ? `${Math.round(state.assistant.kpis.reduce((total, item) => total + item.crmCompleteness, 0) / state.assistant.kpis.length)}%` : '0%'}</strong></div>
           </div>

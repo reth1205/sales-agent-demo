@@ -1,29 +1,16 @@
-import { MapPinned, Play, X } from 'lucide-solid';
+import { CheckCircle2, ClipboardCheck, MapPinned, Play, X } from 'lucide-solid';
 import { For, Show } from 'solid-js';
 import { getSelectedMapAccount } from '../selectors';
+import { buildVisitObjectives } from '../services';
 import { actions, state } from '../store';
 
 function ClientVisitStartDialog() {
   const account = getSelectedMapAccount;
-  const priorities = [
-    'Close the action item regarding contract approval.',
-    'Review the pending renewal opportunity valued at $320,000.',
-    'Confirm the delivery timeline requested during your last visit.',
-  ];
-  const openActivities = [
-    '2 overdue tasks',
-    '1 customer email awaiting response',
-    'Proposal expires in 6 days',
-  ];
-  const customerInsights = [
-    'Last meeting sentiment was positive.',
-    'Main concern remains implementation timing.',
-    'Procurement is waiting for final pricing confirmation.',
-  ];
-  const upcomingEvents = [
-    'Executive business review scheduled next Friday.',
-    'Quarterly renewal meeting in three weeks.',
-  ];
+  const opportunity = () => state.crm.opportunities.find((item) => item.accountId === account()?.id);
+  const objectives = () => {
+    const selected = account();
+    return selected ? buildVisitObjectives(selected, opportunity()) : [];
+  };
   const shouldShow = () => Boolean(
     account()
     && state.ui.visitBriefingAccountId === account()?.id
@@ -45,27 +32,27 @@ function ClientVisitStartDialog() {
         <div class="client-start-copy">
           <span class="eyebrow">Visit briefing</span>
           <h2>You're approaching {account()?.name ?? 'Northwind Foods'}.</h2>
-          <div class="visit-briefing-section">
-            <strong>Today's priorities:</strong>
-            <ul>
-              <For each={priorities}>{(item) => <li>{item}</li>}</For>
-            </ul>
+          <div class="visit-briefing-section visit-objective-intro">
+            <ClipboardCheck size={18} />
+            <div>
+              <strong>Interview objective checklist</strong>
+              <p>Use this brief to guide what the assistant will validate after the conversation.</p>
+            </div>
           </div>
-          <div class="visit-briefing-section">
-            <strong>Open activities:</strong>
-            <ul>
-              <For each={openActivities}>{(item) => <li>{item}</li>}</For>
-            </ul>
+          <div class="visit-objective-list">
+            <For each={objectives()}>
+              {(item) => (
+                <div class="visit-objective-item">
+                  <CheckCircle2 size={17} />
+                  <div>
+                    <strong>{item.label}</strong>
+                    <span>{item.detail}</span>
+                  </div>
+                </div>
+              )}
+            </For>
           </div>
-          <div class="visit-briefing-section">
-            <strong>Customer insights:</strong>
-            <For each={customerInsights}>{(item) => <p>{item}</p>}</For>
-          </div>
-          <div class="visit-briefing-section">
-            <strong>Upcoming events:</strong>
-            <For each={upcomingEvents}>{(item) => <p>{item}</p>}</For>
-          </div>
-          <strong class="visit-ready-line">You're ready for today's visit.</strong>
+          <strong class="visit-ready-line">Ready to start the interview with clear objectives.</strong>
         </div>
         <div class="client-start-actions">
           <button class="secondary-action" onClick={() => actions.clearMapSelection()}>

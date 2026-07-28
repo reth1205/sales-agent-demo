@@ -552,15 +552,15 @@ export const actions = {
       type: 'postMeetingDebrief',
       visitId,
       accountId: context.account.id,
-      title: 'Post-visit debrief ready',
-      message: `${context.account.name} is ready for voice capture. Demo: 30 minutes simulated in ${assistantTiming.demo.postMeetingWindowSeconds} sec.`,
+      title: 'Post-interview listening ready',
+      message: `${context.account.name} is ready for passive listening. Demo: 30 minutes simulated in ${assistantTiming.demo.postMeetingWindowSeconds} sec.`,
       triggerReason,
       createdAt: new Date().toISOString(),
       status: 'unread',
     });
     persistAssistant();
     playNotificationSound();
-    actions.showToast('Post-visit debrief is ready.');
+    actions.showToast('Post-interview listening is ready.');
   },
   schedulePreMeetingDemo(visitId: string) {
     if (!state.assistant.isDemoMode) return;
@@ -582,8 +582,8 @@ export const actions = {
     if (context) {
       notifyMobile({
         id: `assistant-post-${visitId}`,
-        title: 'Post-visit debrief ready',
-        body: `${context.account.name} is ready for voice capture.`,
+        title: 'Post-interview listening ready',
+        body: `${context.account.name} is ready for passive listening.`,
         route: dashboardRoute,
         visitId,
         accountId: context.account.id,
@@ -988,13 +988,13 @@ export const actions = {
     notifyMobile({
       id: `interview-finished-${visitId}`,
       title: 'Interview finished',
-      body: `Questionnaire and AI debrief are unlocked for ${context?.account.name ?? 'this visit'}.`,
+      body: `Post-interview listening is unlocked for ${context?.account.name ?? 'this visit'}.`,
       route: dashboardRoute,
       visitId,
       accountId: context?.account.id,
       type: 'interviewFinished',
     });
-    actions.showToast('Interview finished. Questionnaire unlocked.');
+    actions.showToast('Interview finished. Listening unlocked.');
   },
   beginQuestionnaire(visitId: string, mode: 'manual' | 'voice') {
     setState('visits', (visit) => visit.id === visitId, 'status', 'Questionnaire');
@@ -1067,7 +1067,7 @@ export const actions = {
       notifyMobile({
         id: `crm-queued-${review.visitId}`,
         title: 'CRM update queued',
-        body: 'Your debrief was saved offline and will sync when network mode is restored.',
+        body: 'Your post-interview checklist was saved offline and will sync when network mode is restored.',
         route: dashboardRoute,
         visitId: review.visitId,
         accountId: review.accountUpdate.accountId,
@@ -1079,7 +1079,7 @@ export const actions = {
       notifyMobile({
         id: `crm-updated-${review.visitId}`,
         title: 'CRM updated',
-        body: 'Salesforce updates were generated and synced from the voice debrief.',
+        body: 'Salesforce updates were generated and synced from the post-interview checklist.',
         route: dashboardRoute,
         visitId: review.visitId,
         accountId: review.accountUpdate.accountId,

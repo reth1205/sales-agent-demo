@@ -1,6 +1,6 @@
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
-import { Bot, CheckCircle2, ClipboardList, LoaderCircle, Mic, MicOff, Sparkles } from 'lucide-solid';
+import { Bot, CheckCircle2, ClipboardCheck, LoaderCircle, Mic, MicOff, Sparkles } from 'lucide-solid';
 import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js';
 import { getVisitAccount } from '../selectors';
 import { actions, state } from '../store';
@@ -8,18 +8,18 @@ import { actions, state } from '../store';
 const VOICE_NOTE_ID = 'voice-debrief-notes';
 
 const aiReviewSteps = [
-  'Reading meeting notes',
+  'Reading captured conversation',
+  'Checking interview objectives',
   'Finding Opportunity, Task, Meeting, Contact, and Risk signals',
-  'Preparing Salesforce update list',
-  'Ready for review',
+  'Ready for objective review',
 ];
 
 const demoTranscript = [
-  'Meeting lasted 32 minutes with Mariana Torres and the operations team.',
-  'Opportunity should move to Proposal because they confirmed budget approval for the route intelligence pilot.',
-  'Task: send the updated proposal and pricing deck next week.',
+  'Meeting lasted 32 minutes with Mariana Torres, procurement, and the operations team.',
+  'They confirmed budget approval for the route intelligence pilot and asked us to move the opportunity to Proposal.',
+  'Implementation timeline is tight because rollout needs to begin before the next store opening.',
   'Contact update: Mariana Torres remains the champion, and procurement needs final pricing confirmation.',
-  'Risk: implementation timeline is tight, so flag renewal and rollout timing as a customer risk.',
+  'Task: send the updated proposal and pricing deck next week, then schedule the technical review meeting.',
 ].join(' ');
 
 function QuestionnaireStepper() {
@@ -34,6 +34,7 @@ function QuestionnaireStepper() {
   const [aiStepIndex, setAiStepIndex] = createSignal(0);
   const [interimTranscript, setInterimTranscript] = createSignal('');
   const [isVoiceDisabled, setIsVoiceDisabled] = createSignal(false);
+  const [isCaptureFinished, setIsCaptureFinished] = createSignal(false);
   let recognition: SpeechRecognitionLike | undefined;
   let nativeListening = false;
   let nativeStateListener: PluginListenerHandle | undefined;
@@ -58,7 +59,7 @@ function QuestionnaireStepper() {
     const message = error instanceof Error ? error.message : String(error || '');
     if (/no speech input/i.test(message)) return 'No voice was detected. Tap the mic and speak closer to the emulator microphone.';
     if (/network/i.test(message)) return 'Speech recognition needs network access on this emulator.';
-    if (/permission/i.test(message)) return 'Microphone permission is required for voice capture.';
+    if (/permission/i.test(message)) return 'Microphone permission is required for listening.';
     return message || 'Microphone could not start. Use demo notes.';
   };
   const updateTranscript = (value: string) => actions.updateAnswer(VOICE_NOTE_ID, value);
@@ -102,7 +103,7 @@ function QuestionnaireStepper() {
         : (await SpeechRecognition.requestPermissions()).speechRecognition;
       if (permissionState !== 'granted') {
         setIsVoiceDisabled(true);
-        actions.showToast('Microphone permission is required for voice capture.');
+        actions.showToast('Microphone permission is required for listening.');
         return;
       }
 
@@ -133,9 +134,9 @@ function QuestionnaireStepper() {
       const bestFinalMatch = result.matches?.find((match) => match.trim());
       if (bestFinalMatch) {
         appendTranscript(bestFinalMatch);
-        actions.showToast('Voice note captured.');
+        actions.showToast('Conversation captured.');
       } else {
-        actions.showToast('No voice was detected. Try again or use demo notes.');
+        actions.showToast('No voice was detected. Try again or use demo audio.');
       }
     } catch (error) {
       actions.showToast(getNativeSpeechErrorMessage(error));
@@ -180,7 +181,7 @@ function QuestionnaireStepper() {
     };
     recognition.onerror = () => {
       stopVoiceCapture();
-      actions.showToast('Voice capture failed. Demo notes are ready.');
+      actions.showToast('Listening failed. Demo audio is ready.');
     };
     recognition.onend = () => {
       recognition = undefined;
@@ -204,9 +205,10 @@ function QuestionnaireStepper() {
     if (isAnalyzing() || !hasTranscript()) return;
     stopVoiceCapture();
     clearAiTimers();
+    setIsCaptureFinished(true);
     setIsAnalyzing(true);
     setAiStepIndex(0);
-    actions.showToast('AI is extracting Salesforce updates...');
+    actions.showToast('AI is checking interview objectives...');
 
     aiReviewSteps.slice(1).forEach((_, index) => {
       aiTimers.push(setTimeout(() => setAiStepIndex(index + 1), 720 * (index + 1)));
@@ -216,10 +218,18 @@ function QuestionnaireStepper() {
       clearAiTimers();
     }, 720 * aiReviewSteps.length));
   };
+  const finishListeningSession = () => {
+    stopVoiceCapture();
+    if (!hasTranscript()) {
+      actions.showToast('No conversation captured yet. Start listening or use the demo audio.');
+      return;
+    }
+    startAiReview();
+  };
 
   createEffect(() => {
     if (Capacitor.isNativePlatform()) return;
-    if (attemptedAutoStart || !state.questionnaire.visitId || review() || !speechSupported() || isVoiceDisabled()) return;
+    if (attemptedAutoStart || !state.questionnaire.visitId || review() || isCaptureFinished() || !speechSupported() || isVoiceDisabled()) return;
     attemptedAutoStart = true;
     setTimeout(startVoiceCapture, 180);
   });
@@ -234,50 +244,41 @@ function QuestionnaireStepper() {
       <section class="panel questionnaire-panel stepper-panel voice-debrief-panel">
         <div class="questionnaire-topbar">
           <div>
-            <span class="eyebrow">Voice debrief</span>
-            <h2>{account()?.name ?? 'Customer meeting'} notes</h2>
+            <span class="eyebrow">Post interview listening</span>
+            <h2>{account()?.name ?? 'Customer meeting'} capture</h2>
           </div>
         </div>
         <div class={isListening() ? 'voice-card active' : 'voice-card'}>
           <div class="voice-status">
             <Mic size={24} />
             <div>
-              <strong>{isListening() ? 'Microphone open' : 'Microphone ready'}</strong>
-              <span>Talk naturally about what was reviewed in the meeting.</span>
+              <strong>{isListening() ? 'Listening to the recap' : isCaptureFinished() ? 'Conversation captured' : 'Ready to listen'}</strong>
+              <span>{isCaptureFinished() ? 'The assistant is checking the brief objectives.' : 'Speak naturally. The assistant will only listen until you finish.'}</span>
             </div>
           </div>
           <div class="voice-transcript" aria-live="polite">
-            <span class="eyebrow">Live meeting note</span>
-            <p>{interimTranscript() || transcript() || 'Your spoken recap will appear here.'}</p>
+            <span class="eyebrow">Captured conversation</span>
+            <p>{interimTranscript() || transcript() || 'The spoken recap will appear here while the assistant listens.'}</p>
           </div>
           <div class="voice-action-row">
             <button
               class={isListening() ? 'secondary-action wide' : 'primary-action wide'}
               aria-pressed={isListening()}
-              disabled={!speechSupported()}
+              disabled={!speechSupported() || isAnalyzing() || isCaptureFinished()}
               onClick={() => (isListening() ? disableVoiceCapture() : startVoiceCapture())}
             >
               {isListening() ? <MicOff size={18} /> : <Mic size={18} />}
-              {isListening() ? 'Stop voice capture' : 'Start voice capture'}
+              {isListening() ? 'Pause listening' : 'Start listening'}
             </button>
-            <button class="secondary-action wide" disabled={isListening()} onClick={useDemoTranscript}>
+            <button class="secondary-action wide" disabled={isListening() || isAnalyzing() || isCaptureFinished()} onClick={useDemoTranscript}>
               <Sparkles size={18} />
-              Simulate voice note
+              Simulate meeting audio
             </button>
           </div>
           <Show when={!speechSupported()}>
             <p class="assistant-demo-note">Voice recognition is not available in this browser. Use the simulated voice note to run the demo.</p>
           </Show>
         </div>
-        <label class="field">
-          <span>Captured note</span>
-          <textarea
-            value={transcript()}
-            onInput={(event) => updateTranscript(event.currentTarget.value)}
-            rows={6}
-            placeholder="Summarize the meeting: opportunity, task, meeting details, contact updates, and risk..."
-          />
-        </label>
         <Show when={isAnalyzing()}>
           <div class="ai-review-card" aria-live="polite">
             <div class="ai-review-header">
@@ -300,9 +301,9 @@ function QuestionnaireStepper() {
             </div>
           </div>
         </Show>
-        <button class="primary-action wide" disabled={!hasTranscript() || isAnalyzing()} onClick={startAiReview}>
-          {isAnalyzing() ? <LoaderCircle size={18} class="sync-spinner" /> : <ClipboardList size={18} />}
-          {isAnalyzing() ? 'Extracting updates' : 'Generate Salesforce updates'}
+        <button class="primary-action wide" disabled={!hasTranscript() || isAnalyzing() || isCaptureFinished()} onClick={finishListeningSession}>
+          {isAnalyzing() ? <LoaderCircle size={18} class="sync-spinner" /> : <ClipboardCheck size={18} />}
+          {isAnalyzing() ? 'Checking objectives' : 'Finish and check objectives'}
         </button>
       </section>
     </Show>
