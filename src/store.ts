@@ -1,4 +1,5 @@
 import { createStore, produce } from 'solid-js/store';
+import { cancelMobileNotifications, sendMobileNotification } from './mobileNotifications';
 import {
   accountCoverageMetrics,
   accounts,
@@ -99,6 +100,7 @@ type AppState = {
       progress: number;
       elapsedSeconds: number;
       durationSeconds: number;
+      endsAt?: string;
     };
     selectedManagerAgentId?: string;
     reportingTab: ReportingTab;
@@ -128,6 +130,11 @@ const save = (key: string, value: unknown) => {
 };
 
 const initialProgress: ProgressState = { percent: 0, milestones: [] };
+const itineraryReminderStorageKey = 'sales-demo-itinerary-reminder-scheduled-at';
+const itineraryReminderDelaySeconds = 10;
+const itineraryReminderCount = 1;
+const legacyItineraryReminderCount = 36;
+const itineraryReminderBaseId = 'itinerary-reminder';
 const storageKeys = [
   'sales-demo-visits',
   'sales-demo-progress',
@@ -143,6 +150,7 @@ const storageKeys = [
   'sales-demo-assistant-extractions',
   'sales-demo-assistant-writebacks',
   'sales-demo-assistant-kpis',
+  itineraryReminderStorageKey,
 ];
 
 const initialMapDemoState = () => ({
@@ -161,6 +169,7 @@ const initialMeetingDemoState = () => ({
   progress: 0,
   elapsedSeconds: 0,
   durationSeconds: assistantTiming.demo.postMeetingWindowSeconds,
+  endsAt: undefined,
 });
 
 const loadVisitsWithDefaults = () => {
@@ -233,6 +242,26 @@ const playNotificationSound = () => {
   } catch {
     // Browsers can block audio until user interaction; the visual notification still works.
   }
+};
+
+const dashboardRoute = '/dashboard';
+
+const itineraryReminderIds = (count = itineraryReminderCount) =>
+  Array.from({ length: count }, (_, index) => `${itineraryReminderBaseId}-${index + 1}`);
+const legacyItineraryReminderIds = () => itineraryReminderIds(legacyItineraryReminderCount);
+
+const notifyMobile = (notification: {
+  id: string;
+  title: string;
+  body: string;
+  route?: string;
+  visitId?: string;
+  accountId?: string;
+  assistantNotificationId?: string;
+  type?: string;
+  scheduleAt?: Date;
+}) => {
+  void sendMobileNotification(notification);
 };
 
 export const [state, setState] = createStore<AppState>({
@@ -354,6 +383,18 @@ const upsertNotification = (notification: AssistantNotification) => {
   } else {
     setState('assistant', 'notifications', state.assistant.notifications.length, notification);
   }
+  if (notification.status === 'unread') {
+    notifyMobile({
+      id: `assistant-${notification.id}`,
+      title: notification.title,
+      body: notification.message,
+      route: dashboardRoute,
+      visitId: notification.visitId,
+      accountId: notification.accountId,
+      assistantNotificationId: notification.id,
+      type: notification.type,
+    });
+  }
 };
 
 const createDefaultWriteback = (review: ReviewSummary): SalesforceWritebackStatus | undefined => {
@@ -382,14 +423,52 @@ export const actions = {
   login() {
     setState('session', 'isAuthenticated', true);
     save('sales-demo-session', state.session);
+    void actions.scheduleItineraryReminderNotification();
   },
   logout() {
     setState('session', 'isAuthenticated', false);
     save('sales-demo-session', state.session);
+    localStorage.removeItem(itineraryReminderStorageKey);
   },
   showToast(message: string) {
     setState('ui', 'toast', message);
     setTimeout(() => setState('ui', 'toast', undefined), 2600);
+  },
+  async scheduleItineraryReminderNotification(options: { force?: boolean; showToast?: boolean; delaySeconds?: number } = {}) {
+    if (!options.force && load<string | undefined>(itineraryReminderStorageKey, undefined)) {
+      await cancelMobileNotifications(legacyItineraryReminderIds().slice(itineraryReminderCount));
+      return;
+    }
+    const scheduledVisits = state.visits.filter((visit) => visit.status === 'Scheduled' || visit.status === 'InProgress');
+    const firstVisit = scheduledVisits[0];
+    const context = firstVisit ? getVisitContext(firstVisit.id) : undefined;
+    const delaySeconds = options.delaySeconds ?? itineraryReminderDelaySeconds;
+    const initialScheduleAt = new Date(Date.now() + delaySeconds * 1000);
+    const reminder = {
+      title: 'Your itinerary is ready',
+      body: context
+        ? `Open Sales Agent to review today's route and start with ${context.account.name}.`
+        : "Open Sales Agent to review today's itinerary and start your field demo.",
+      route: dashboardRoute,
+      visitId: firstVisit?.id,
+      accountId: context?.account.id,
+      type: 'itineraryReminder',
+    };
+    await cancelMobileNotifications(legacyItineraryReminderIds());
+    const results = await Promise.all(itineraryReminderIds().map((id) => sendMobileNotification({
+      ...reminder,
+      id,
+      scheduleAt: initialScheduleAt,
+    })));
+    const sent = results.some(Boolean);
+    if (sent) save(itineraryReminderStorageKey, initialScheduleAt.toISOString());
+    if (options.showToast) {
+      actions.showToast(sent ? 'Itinerary push notification scheduled.' : 'Install the mobile app and enable notifications first.');
+    }
+  },
+  async cancelItineraryReminderNotifications() {
+    await cancelMobileNotifications(legacyItineraryReminderIds());
+    localStorage.removeItem(itineraryReminderStorageKey);
   },
   openAssistantNotification(notificationId: string) {
     const notification = state.assistant.notifications.find((item) => item.id === notificationId);
@@ -480,6 +559,7 @@ export const actions = {
       status: 'unread',
     });
     persistAssistant();
+    playNotificationSound();
     actions.showToast('Post-visit debrief is ready.');
   },
   schedulePreMeetingDemo(visitId: string) {
@@ -494,33 +574,71 @@ export const actions = {
   schedulePostMeetingDemo(visitId: string) {
     if (!state.assistant.isDemoMode) return;
     if (postMeetingDemoTimer) clearInterval(postMeetingDemoTimer);
+    const context = getVisitContext(visitId);
     const durationSeconds = assistantTiming.demo.postMeetingWindowSeconds;
     const tickMs = 125;
-    const frames = Math.max(1, Math.round((durationSeconds * 1000) / tickMs));
-    let frame = 0;
-    setState('ui', 'meetingDemo', {
-      isRunning: true,
-      visitId,
-      progress: 0,
-      elapsedSeconds: 0,
-      durationSeconds,
-    });
-    postMeetingDemoTimer = setInterval(() => {
-      frame += 1;
-      const progress = Math.min(frame / frames, 1);
+    const startedAt = Date.now();
+    const endsAt = new Date(startedAt + durationSeconds * 1000);
+    if (context) {
+      notifyMobile({
+        id: `assistant-post-${visitId}`,
+        title: 'Post-visit debrief ready',
+        body: `${context.account.name} is ready for voice capture.`,
+        route: dashboardRoute,
+        visitId,
+        accountId: context.account.id,
+        type: 'postMeetingDebrief',
+        scheduleAt: endsAt,
+      });
+    }
+    const updateMeetingProgress = () => {
+      const elapsedSeconds = Math.min(durationSeconds, Math.max(0, Math.round((Date.now() - startedAt) / 1000)));
+      const progress = Math.min(elapsedSeconds / durationSeconds, 1);
       setState('ui', 'meetingDemo', {
         isRunning: true,
         visitId,
         progress: Math.round(progress * 100),
-        elapsedSeconds: Math.min(durationSeconds, Math.round(progress * durationSeconds)),
+        elapsedSeconds,
         durationSeconds,
+        endsAt: endsAt.toISOString(),
       });
       if (progress < 1) return;
       if (postMeetingDemoTimer) clearInterval(postMeetingDemoTimer);
       postMeetingDemoTimer = undefined;
       setState('ui', 'meetingDemo', initialMeetingDemoState());
       actions.triggerPostMeetingDebrief(visitId, 'meetingTimer');
+    };
+    setState('ui', 'meetingDemo', {
+      isRunning: true,
+      visitId,
+      progress: 0,
+      elapsedSeconds: 0,
+      durationSeconds,
+      endsAt: endsAt.toISOString(),
+    });
+    postMeetingDemoTimer = setInterval(() => {
+      updateMeetingProgress();
     }, tickMs);
+  },
+  reconcileMeetingDemoProgress() {
+    const demo = state.ui.meetingDemo;
+    if (!demo.isRunning || !demo.visitId || !demo.endsAt) return;
+    const endsAt = Date.parse(demo.endsAt);
+    if (!Number.isFinite(endsAt)) return;
+    const elapsedSeconds = Math.min(demo.durationSeconds, Math.max(0, Math.round((Date.now() - (endsAt - demo.durationSeconds * 1000)) / 1000)));
+    const progress = Math.min(elapsedSeconds / demo.durationSeconds, 1);
+    if (progress < 1) {
+      setState('ui', 'meetingDemo', {
+        ...demo,
+        progress: Math.round(progress * 100),
+        elapsedSeconds,
+      });
+      return;
+    }
+    if (postMeetingDemoTimer) clearInterval(postMeetingDemoTimer);
+    postMeetingDemoTimer = undefined;
+    setState('ui', 'meetingDemo', initialMeetingDemoState());
+    actions.triggerPostMeetingDebrief(demo.visitId, 'meetingTimer');
   },
   selectManagerAgent(agentId?: string) {
     setState('ui', 'selectedManagerAgentId', agentId);
@@ -706,6 +824,7 @@ export const actions = {
       currentStepIndex: 0,
       steps,
     });
+    speakText('Route demo started. I will guide you through each customer stop.', 'en-US');
     actions.animateMapDemoStep(0);
     const firstStep = steps[0];
     const firstVisit = firstStep ? state.visits.find((item) => item.accountId === firstStep.accountId && item.status === 'Scheduled') : undefined;
@@ -824,25 +943,57 @@ export const actions = {
     });
     if (visit) {
       setState('ui', 'activeVisitPromptId', visit.id);
+      const context = getVisitContext(visit.id);
+      if (context) {
+        notifyMobile({
+          id: `visit-radius-${visit.id}`,
+          title: 'Visit ready to start',
+          body: `You are inside the scheduled visit radius for ${context.account.name}.`,
+          route: '/dashboard',
+          visitId: visit.id,
+          accountId: context.account.id,
+          type: 'visitRadius',
+        });
+      }
     }
   },
   startVisit(visitId: string) {
+    const context = getVisitContext(visitId);
     setState('visits', (visit) => visit.id === visitId, 'status', 'InProgress');
     setState('visits', (visit) => visit.id === visitId, 'startedAt', new Date().toISOString());
     setState('ui', 'activeVisitPromptId', undefined);
     addProgress(10);
     persistVisits();
     actions.schedulePostMeetingDemo(visitId);
+    notifyMobile({
+      id: `visit-started-${visitId}`,
+      title: 'Visit started',
+      body: `${context?.account.name ?? 'Customer visit'} is now in progress.`,
+      route: dashboardRoute,
+      visitId,
+      accountId: context?.account.id,
+      type: 'visitStarted',
+    });
     actions.showToast('Visit marked in progress.');
   },
   dismissVisitPrompt() {
     setState('ui', 'activeVisitPromptId', undefined);
   },
   finishInterview(visitId: string) {
+    const context = getVisitContext(visitId);
     setState('visits', (visit) => visit.id === visitId, 'status', 'InterviewFinished');
     setState('visits', (visit) => visit.id === visitId, 'finishedAt', new Date().toISOString());
     persistVisits();
     actions.schedulePostMeetingDemo(visitId);
+    notifyMobile({
+      id: `interview-finished-${visitId}`,
+      title: 'Interview finished',
+      body: `Questionnaire and AI debrief are unlocked for ${context?.account.name ?? 'this visit'}.`,
+      route: dashboardRoute,
+      visitId,
+      accountId: context?.account.id,
+      type: 'interviewFinished',
+    });
     actions.showToast('Interview finished. Questionnaire unlocked.');
   },
   beginQuestionnaire(visitId: string, mode: 'manual' | 'voice') {
@@ -913,9 +1064,27 @@ export const actions = {
       setState('queue', state.queue.length, item);
       setState('visits', (visit) => visit.id === review.visitId, 'pendingSync', true);
       persistQueue();
+      notifyMobile({
+        id: `crm-queued-${review.visitId}`,
+        title: 'CRM update queued',
+        body: 'Your debrief was saved offline and will sync when network mode is restored.',
+        route: dashboardRoute,
+        visitId: review.visitId,
+        accountId: review.accountUpdate.accountId,
+        type: 'crmQueued',
+      });
       actions.showToast('Saved to pending sync queue.');
     } else {
       actions.applyReview(review);
+      notifyMobile({
+        id: `crm-updated-${review.visitId}`,
+        title: 'CRM updated',
+        body: 'Salesforce updates were generated and synced from the voice debrief.',
+        route: dashboardRoute,
+        visitId: review.visitId,
+        accountId: review.accountUpdate.accountId,
+        type: 'crmSynced',
+      });
       actions.showToast('CRM updated successfully.');
     }
     const writeback = createDefaultWriteback(review);
@@ -973,12 +1142,20 @@ export const actions = {
   },
   syncQueue() {
     state.queue.forEach((item) => actions.applyReview(item.summary));
+    const syncedCount = state.queue.length;
     setState('queue', []);
     setState('visits', produce((items) => items.forEach((visit) => {
       visit.pendingSync = false;
     })));
     persistQueue();
     persistVisits();
+    notifyMobile({
+      id: `queue-synced-${Date.now()}`,
+      title: 'Pending sync completed',
+      body: `${syncedCount} pending CRM update${syncedCount === 1 ? '' : 's'} synced successfully.`,
+      route: dashboardRoute,
+      type: 'queueSynced',
+    });
     actions.showToast('Pending sync completed.');
   },
   clearTasks() {

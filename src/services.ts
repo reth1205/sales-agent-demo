@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+import { QueueStrategy, TextToSpeech } from '@capacitor-community/text-to-speech';
 import type {
   Account,
   AccountCoverageMetric,
@@ -406,24 +408,72 @@ export const interpretVisitAnswers = (
 };
 
 export const speakText = (text: string, lang = 'en-US') => {
-  if (!('speechSynthesis' in globalThis)) return;
-  globalThis.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = lang;
-  globalThis.speechSynthesis.speak(utterance);
+  if (Capacitor.isNativePlatform()) {
+    void TextToSpeech.stop()
+      .catch(() => undefined)
+      .then(() => TextToSpeech.speak({
+        text,
+        lang,
+        rate: 0.96,
+        pitch: 1,
+        volume: 1,
+        category: 'playback',
+        queueStrategy: QueueStrategy.Flush,
+      }))
+      .catch(() => undefined);
+    return true;
+  }
+
+  if (!('speechSynthesis' in globalThis) || !('SpeechSynthesisUtterance' in globalThis)) return false;
+  const synth = globalThis.speechSynthesis;
+  const speak = () => {
+    synth.cancel();
+    synth.resume();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    utterance.rate = 0.96;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    const voices = synth.getVoices();
+    utterance.voice = voices.find((voice) => voice.lang === lang) ?? voices.find((voice) => voice.lang.startsWith(lang.slice(0, 2))) ?? null;
+    synth.speak(utterance);
+    setTimeout(() => {
+      if (synth.paused) synth.resume();
+    }, 120);
+  };
+
+  if (!synth.getVoices().length) {
+    synth.onvoiceschanged = speak;
+    setTimeout(speak, 120);
+  } else {
+    speak();
+  }
+  return true;
 };
 
 export const cancelSpeech = () => {
+  if (Capacitor.isNativePlatform()) {
+    void TextToSpeech.stop().catch(() => undefined);
+    return;
+  }
+
   if (!('speechSynthesis' in globalThis)) return;
   globalThis.speechSynthesis.cancel();
 };
 
 export const pauseSpeech = () => {
+  if (Capacitor.isNativePlatform()) {
+    void TextToSpeech.stop().catch(() => undefined);
+    return;
+  }
+
   if (!('speechSynthesis' in globalThis)) return;
   globalThis.speechSynthesis.pause();
 };
 
 export const resumeSpeech = () => {
+  if (Capacitor.isNativePlatform()) return;
+
   if (!('speechSynthesis' in globalThis)) return;
   globalThis.speechSynthesis.resume();
 };

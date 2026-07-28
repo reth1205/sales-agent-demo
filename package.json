@@ -7,15 +7,29 @@
     "dev": "vite --host 127.0.0.1",
     "test": "tsc -b",
     "build": "tsc -b && vite build",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "mobile:sync": "npm run build && cap sync",
+    "cap:sync": "cap sync",
+    "cap:add:android": "cap add android",
+    "cap:add:ios": "cap add ios",
+    "cap:open:android": "cap open android",
+    "cap:open:ios": "cap open ios"
   },
   "dependencies": {
+    "@capacitor-community/speech-recognition": "^7.0.1",
+    "@capacitor-community/text-to-speech": "^8.0.2",
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/ios": "^8.4.2",
+    "@capacitor/local-notifications": "^8.2.1",
+    "@capacitor/push-notifications": "^8.1.2",
     "@solidjs/router": "latest",
     "leaflet": "latest",
     "lucide-solid": "latest",
     "solid-js": "latest"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.4.2",
     "@types/leaflet": "latest",
     "typescript": "latest",
     "vite": "latest",

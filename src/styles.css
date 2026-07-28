@@ -817,6 +817,82 @@ span {
   border-color: #f7d77a;
 }
 
+.voice-activation-button {
+  justify-self: center;
+  position: relative;
+  width: 184px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #fff;
+  background: transparent;
+  border-radius: 50%;
+}
+
+.voice-activation-button::before,
+.voice-activation-rings {
+  content: "";
+  position: absolute;
+  inset: 13px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.24), transparent 34%),
+    linear-gradient(145deg, #19c8ff, #096dff 56%, #062d88);
+  box-shadow:
+    0 0 0 10px rgba(25, 200, 255, 0.14),
+    0 0 0 24px rgba(9, 109, 255, 0.08),
+    0 22px 54px rgba(9, 109, 255, 0.32);
+}
+
+.voice-activation-rings {
+  inset: 0;
+  background: transparent;
+  border: 1px solid rgba(25, 200, 255, 0.32);
+  box-shadow:
+    0 0 0 14px rgba(25, 200, 255, 0.1),
+    0 0 0 34px rgba(9, 109, 255, 0.06);
+}
+
+.voice-activation-core {
+  position: relative;
+  width: 84px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  color: #eaffff;
+  background: rgba(3, 22, 48, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 50%;
+  box-shadow: inset 0 0 26px rgba(255, 255, 255, 0.18);
+}
+
+.voice-activation-label {
+  position: absolute;
+  left: 50%;
+  bottom: 26px;
+  width: max-content;
+  max-width: 140px;
+  color: #eaffff;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.voice-activation-button:hover::before,
+.voice-activation-button:focus-visible::before {
+  box-shadow:
+    0 0 0 12px rgba(25, 200, 255, 0.18),
+    0 0 0 30px rgba(9, 109, 255, 0.1),
+    0 22px 60px rgba(9, 109, 255, 0.4);
+}
+
+.voice-activation-button:active {
+  transform: scale(0.98);
+}
+
 .assistant-summary svg {
   color: #008a9a;
   margin-top: 2px;
@@ -1154,6 +1230,14 @@ textarea {
 .voice-transcript p {
   color: #34444f;
   font-weight: 700;
+}
+
+.token-preview {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: #34444f;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
 }
 
 .questionnaire-page {
@@ -2137,30 +2221,94 @@ textarea {
   background: transparent;
 }
 
-/* Vibrant demo theme */
+/* Dark blue demo theme */
 :root {
-  color: #172033;
-  background: #eef6fb;
+  color: #e6f0ff;
+  background: #07111f;
+  color-scheme: dark;
+  --bg-deep: #07111f;
+  --bg-shell: #0a1627;
+  --surface: rgba(13, 29, 48, 0.96);
+  --surface-raised: rgba(17, 38, 62, 0.96);
+  --surface-muted: #132840;
+  --surface-soft: #173451;
+  --border: rgba(126, 178, 230, 0.18);
+  --border-strong: rgba(96, 165, 250, 0.34);
+  --text: #e6f0ff;
+  --text-muted: #9fb1c7;
+  --text-soft: #c3d4e8;
+  --primary: #38bdf8;
+  --primary-deep: #0f4c81;
+  --primary-soft: rgba(56, 189, 248, 0.16);
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
 }
 
 .app-frame {
   background:
-    linear-gradient(135deg, rgba(45, 182, 125, 0.18), transparent 34%),
-    linear-gradient(215deg, rgba(54, 120, 246, 0.14), transparent 42%),
-    linear-gradient(315deg, rgba(242, 170, 36, 0.18), transparent 46%),
-    #eef6fb;
+    radial-gradient(circle at 18% 10%, rgba(14, 116, 144, 0.28), transparent 30%),
+    linear-gradient(145deg, rgba(7, 18, 34, 0.98), rgba(15, 35, 62, 0.95) 48%, rgba(3, 9, 18, 1)),
+    var(--bg-deep);
 }
 
 .phone-shell {
-  background: #fbfdff;
-  box-shadow: 0 24px 80px rgba(23, 32, 51, 0.2);
+  color: var(--text);
+  background: var(--bg-shell);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.44);
 }
 
 .login-page {
   background:
-    linear-gradient(180deg, rgba(0, 138, 154, 0.16), transparent 42%),
-    linear-gradient(315deg, rgba(226, 85, 63, 0.12), transparent 52%),
-    #fbfdff;
+    radial-gradient(circle at 24% 4%, rgba(56, 189, 248, 0.22), transparent 35%),
+    linear-gradient(180deg, rgba(10, 33, 58, 0.94), var(--bg-shell) 58%),
+    var(--bg-shell);
+}
+
+h1,
+h2,
+h3,
+strong,
+.client-start-copy strong,
+.assistant-brief-grid strong,
+.summary-stat-row strong,
+.visit-workflow-panel strong,
+.voice-status strong,
+.ai-review-header strong,
+.salesforce-sync-header strong,
+.schedule-row-summary strong,
+.manager-kpi strong,
+.agent-row-header strong,
+.coverage-row-header strong,
+.insight-card-header strong,
+.demo-step-copy strong,
+.route-simulation-banner strong,
+.meeting-simulation-banner strong,
+.assistant-top-copy strong {
+  color: var(--text);
+}
+
+p,
+span,
+.coverage-legend span,
+.field span,
+.questionnaire-topbar p,
+.visit-briefing-section li,
+.visit-briefing-section p,
+.assistant-summary p,
+.assistant-section p,
+.assistant-briefing-copy p,
+.insight-panel p,
+.nearby-banner p,
+.task-line,
+.voice-transcript p,
+.token-preview,
+.salesforce-update-row span,
+.coaching-box p,
+.top-alert p,
+.insight-card p,
+.demo-step-copy p {
+  color: var(--text-muted);
 }
 
 .brand-mark,
@@ -2173,24 +2321,25 @@ textarea {
 .demo-progress-line span,
 .trend-legend .team,
 .trend-bars .team {
-  background: #008a9a;
+  background: var(--primary);
 }
 
 .primary-action {
-  box-shadow: 0 10px 22px rgba(0, 138, 154, 0.22);
+  color: #031423;
+  box-shadow: 0 14px 28px rgba(56, 189, 248, 0.22);
 }
 
 .secondary-action,
 .icon-button,
 .nav-link.active {
-  color: #075c68;
-  background: #dff6f8;
+  color: #bae6fd;
+  background: var(--primary-soft);
 }
 
 .secondary-action.danger,
 .icon-button.danger {
-  color: #b3382b;
-  background: #ffe4dc;
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.14);
 }
 
 .agent-preview,
@@ -2201,26 +2350,36 @@ textarea {
 .map-demo-controls,
 .nearby-banner,
 .manager-kpi {
-  background: rgba(255, 255, 255, 0.96);
-  border-color: rgba(23, 32, 51, 0.08);
-  box-shadow: 0 18px 44px rgba(23, 32, 51, 0.1);
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+}
+
+.bottom-sheet,
+.client-start-dialog,
+.assistant-top-notification,
+.route-simulation-banner,
+.meeting-simulation-banner {
+  background: var(--surface-raised);
+  border-color: var(--border);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
 }
 
 .bottom-nav {
-  background: rgba(255, 255, 255, 0.94);
-  border-top-color: rgba(23, 32, 51, 0.08);
+  background: rgba(7, 17, 31, 0.92);
+  border-top-color: var(--border);
 }
 
 .eyebrow,
 .offline-icon,
 .trend-legend .visits,
 .trend-bars .visits {
-  color: #e2553f;
+  color: #fb7185;
 }
 
 .trend-legend .visits,
 .trend-bars .visits {
-  background: #e2553f;
+  background: #fb7185;
 }
 
 .nav-link.active,
@@ -2231,7 +2390,7 @@ textarea {
 .insight-icon,
 .nearby-banner > svg,
 .insight-panel svg {
-  color: #008a9a;
+  color: var(--primary);
 }
 
 .metric-grid div,
@@ -2244,13 +2403,14 @@ textarea {
 .insight-card,
 .empty-panel,
 .agent-row {
-  background: #f1f7ff;
+  background: var(--surface-muted);
+  border-color: var(--border);
 }
 
 .insight-panel {
-  color: #075c68;
-  background: #e2f7f5;
-  border-color: #bce9e5;
+  color: #dff6ff;
+  background: rgba(14, 116, 144, 0.22);
+  border-color: rgba(56, 189, 248, 0.24);
 }
 
 .visit-workflow-panel,
@@ -2258,82 +2418,83 @@ textarea {
 .task-summary,
 .recommended-action,
 .top-alert {
-  background: #fff4d8;
-  border-color: #f7d77a;
+  background: rgba(146, 64, 14, 0.2);
+  border-color: rgba(251, 191, 36, 0.26);
 }
 
 .danger-zone,
 .top-alert.critical,
 .insight-card.critical {
-  background: #ffece6;
-  border-color: #ffc9bb;
+  background: rgba(127, 29, 29, 0.22);
+  border-color: rgba(248, 113, 113, 0.3);
 }
 
 .status-badge.inprogress,
 .status-badge.questionnaire {
-  color: #075c68;
-  background: #dff6f8;
+  color: #bae6fd;
+  background: rgba(56, 189, 248, 0.16);
 }
 
 .status-badge.completed,
 .risk-pill,
 .trend-legend .crm,
 .trend-bars .crm {
-  color: #17643f;
-  background: #dcf7e8;
+  color: #bbf7d0;
+  background: rgba(52, 211, 153, 0.16);
 }
 
 .trend-legend .crm,
 .trend-bars .crm {
-  background: #2fb67c;
+  background: var(--success);
 }
 
 .risk-pill.watch,
 .insight-card.warning {
-  color: #7d5700;
-  background: #fff3c4;
+  color: #fde68a;
+  background: rgba(146, 64, 14, 0.24);
 }
 
 .risk-pill.high {
-  color: #b3382b;
-  background: #ffe4dc;
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.16);
 }
 
 .risk-list span {
-  color: #b3382b;
-  background: #ffece6;
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.16);
 }
 
 .agent-marker span {
-  background: #e2553f;
+  background: #fb7185;
 }
 
 .account-marker.scheduledVisit span,
 .visit-marker.completed span {
-  background: #2fb67c;
+  background: var(--success);
 }
 
 .account-marker.activeAccount span {
-  background: #3678f6;
+  background: #60a5fa;
 }
 
 .account-marker.opportunity span {
-  background: #f2aa24;
+  background: var(--warning);
 }
 
 .account-marker.risk span {
-  background: #e2553f;
+  background: var(--danger);
 }
 
 .account-marker.completed span {
-  background: #7c8ea0;
+  background: #64748b;
 }
 
 .account-marker.selected span {
-  outline-color: rgba(0, 138, 154, 0.32);
+  outline-color: rgba(56, 189, 248, 0.4);
 }
 
-.map-view .leaflet-tile {
+.map-view .leaflet-tile,
+.team-map-canvas .leaflet-tile {
   filter: saturate(1.14) contrast(1.03) brightness(1.02);
 }
 
@@ -2360,10 +2521,10 @@ textarea {
   gap: 6px;
   width: fit-content;
   padding: 7px 9px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(23, 32, 51, 0.08);
+  background: rgba(13, 29, 48, 0.94);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 10px 28px rgba(23, 32, 51, 0.1);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
 }
 
 .map-utility-row {
@@ -2373,8 +2534,8 @@ textarea {
 }
 
 .selected-tool {
-  color: #fff;
-  background: #008a9a;
+  color: #031423;
+  background: var(--primary);
 }
 
 .coverage-legend span {
@@ -2394,14 +2555,167 @@ textarea {
 }
 
 .coverage-legend .range-dot {
-  border: 2px dashed #008a9a;
-  background: rgba(47, 182, 124, 0.12);
+  border: 2px dashed var(--primary);
+  background: rgba(52, 211, 153, 0.16);
   border-radius: 50%;
 }
 
 .coverage-legend .grid-dot {
-  border: 1px solid #3678f6;
-  background: rgba(54, 120, 246, 0.18);
+  border: 1px solid #60a5fa;
+  background: rgba(96, 165, 250, 0.22);
+}
+
+.progress-ring {
+  background: conic-gradient(var(--primary) var(--progress), #1e344e 0);
+}
+
+.progress-ring span,
+.segmented-control .selected {
+  color: var(--text);
+  background: #0d2036;
+}
+
+.nav-link {
+  color: #7f94ad;
+}
+
+.pill,
+.status-badge,
+.segmented-control,
+.sheet-handle,
+.route-progress-line,
+.meeting-progress-line,
+.demo-progress-line,
+.bar-line,
+.question-progress {
+  background: #18314d;
+}
+
+.assistant-sheet {
+  border-color: rgba(56, 189, 248, 0.26);
+}
+
+.assistant-top-notification,
+.assistant-top-notification.post,
+.assistant-top-notification.arrival,
+.route-simulation-banner,
+.meeting-simulation-banner {
+  border-left-color: var(--primary);
+}
+
+.assistant-top-notification.post,
+.meeting-simulation-banner {
+  border-left-color: var(--warning);
+}
+
+.assistant-top-notification.arrival {
+  border-left-color: var(--success);
+}
+
+.assistant-top-icon,
+.client-start-icon,
+.insight-icon {
+  color: #bae6fd;
+  background: rgba(56, 189, 248, 0.16);
+}
+
+.assistant-top-notification.post .assistant-top-icon {
+  color: #fde68a;
+  background: rgba(251, 191, 36, 0.16);
+}
+
+.assistant-top-notification.arrival .assistant-top-icon {
+  color: #bbf7d0;
+  background: rgba(52, 211, 153, 0.16);
+}
+
+.assistant-top-copy span:last-child,
+.assistant-row-signal,
+.demo-voice-line,
+.demo-voice-line span,
+.details-toggle,
+.salesforce-update-row strong,
+.entity-chip-row span {
+  color: #7dd3fc;
+}
+
+.assistant-demo-note,
+.assistant-summary,
+.assistant-briefing-copy,
+.visit-ready-line,
+.assistant-brief-grid div {
+  color: var(--text-soft);
+  background: rgba(14, 116, 144, 0.2);
+  border-color: rgba(56, 189, 248, 0.24);
+}
+
+.assistant-summary.post,
+.warning-box,
+.opportunity-strip {
+  background: rgba(146, 64, 14, 0.24);
+  border-color: rgba(251, 191, 36, 0.28);
+}
+
+.assistant-meta-row span,
+.entity-chip-row span {
+  background: rgba(56, 189, 248, 0.14);
+}
+
+.summary-two-column > div,
+.salesforce-update-row,
+.territory-grid div,
+.schedule-row.expanded,
+.voice-card,
+.voice-transcript {
+  background: var(--surface-muted);
+  border-color: var(--border);
+}
+
+.summary-stat-row div,
+.metric-grid div,
+.timeline-item,
+.context-box,
+.summary-box,
+.question-card,
+.coverage-row,
+.insight-card,
+.empty-panel,
+.agent-row {
+  background: var(--surface-soft);
+}
+
+.agent-row.selected {
+  border-color: var(--border-strong);
+  background: rgba(56, 189, 248, 0.16);
+}
+
+input,
+textarea {
+  color: var(--text);
+  background: #0b1b2e;
+  border-color: #284766;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6f86a3;
+}
+
+.list-row,
+.schedule-row {
+  border-color: rgba(126, 178, 230, 0.14);
+}
+
+.toast {
+  color: #e6f0ff;
+  background: #12243a;
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+}
+
+.team-map-canvas {
+  border-color: var(--border);
+  background: #0e2035;
 }
 
 @media (min-width: 760px) {

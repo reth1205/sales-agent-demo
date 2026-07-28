@@ -1,5 +1,5 @@
 import { useNavigate } from '@solidjs/router';
-import { Bot, CheckCircle2, ClipboardList, Sparkles, X } from 'lucide-solid';
+import { Bot, Mic, Sparkles, X } from 'lucide-solid';
 import { For, Show } from 'solid-js';
 import { getVisitAccount } from '../selectors';
 import { actions, state } from '../store';
@@ -64,7 +64,7 @@ function AssistantNotificationSheet() {
             </button>
           </div>
 
-          <Show when={!isBriefing()}>
+          <Show when={!isBriefing() && active().type !== 'postMeetingDebrief'}>
             <p class="assistant-demo-note">{active().message}</p>
           </Show>
 
@@ -80,22 +80,20 @@ function AssistantNotificationSheet() {
           </Show>
 
           <Show when={active().type === 'postMeetingDebrief'}>
-            <div class="assistant-summary post">
-              <CheckCircle2 size={18} />
-              <div>
-                <strong>{account()?.name}</strong>
-                <p>Capture voice notes, extract fields, and prepare the Salesforce update.</p>
-              </div>
-            </div>
-            <button class="primary-action wide" onClick={openDebrief}>
-              <ClipboardList size={18} />
-              Start voice debrief
+            <button class="voice-activation-button" onClick={openDebrief} aria-label={`Start voice debrief for ${account()?.name ?? 'this visit'}`}>
+              <span class="voice-activation-rings" aria-hidden="true" />
+              <span class="voice-activation-core">
+                <Mic size={38} />
+              </span>
+              <span class="voice-activation-label">Activate voice</span>
             </button>
           </Show>
 
-          <button class="details-toggle" onClick={() => actions.dismissAssistantNotification(active().id)}>
-            Dismiss assistant notification
-          </button>
+          <Show when={active().type !== 'postMeetingDebrief'}>
+            <button class="details-toggle" onClick={() => actions.dismissAssistantNotification(active().id)}>
+              Dismiss assistant notification
+            </button>
+          </Show>
         </section>
       )}
     </Show>

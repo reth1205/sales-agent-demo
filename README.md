@@ -11,6 +11,17 @@ npm run dev
 
 Open the local Vite URL printed by the terminal.
 
+## Mobile app
+
+The demo includes Capacitor projects for Android and iOS.
+
+```bash
+npm run mobile:sync
+npm run cap:open:android
+```
+
+See `docs/capacitor-mobile.md` for push notification setup and native build notes.
+
 ## Demo script
 
 1. Sign in as Sofia Rivera.

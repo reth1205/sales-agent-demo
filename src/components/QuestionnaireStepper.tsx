@@ -1,3 +1,5 @@
+import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
+import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { Bot, CheckCircle2, ClipboardList, LoaderCircle, Mic, MicOff, Sparkles } from 'lucide-solid';
 import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js';
 import { getVisitAccount } from '../selectors';
@@ -27,13 +29,14 @@ function QuestionnaireStepper() {
     const currentVisit = visit();
     return currentVisit ? getVisitAccount(currentVisit) : undefined;
   };
-  const [speechSupported] = createSignal(Boolean((globalThis as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).SpeechRecognition || (globalThis as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).webkitSpeechRecognition));
   const [isListening, setIsListening] = createSignal(false);
   const [isAnalyzing, setIsAnalyzing] = createSignal(false);
   const [aiStepIndex, setAiStepIndex] = createSignal(0);
   const [interimTranscript, setInterimTranscript] = createSignal('');
   const [isVoiceDisabled, setIsVoiceDisabled] = createSignal(false);
   let recognition: SpeechRecognitionLike | undefined;
+  let nativeListening = false;
+  let nativeStateListener: PluginListenerHandle | undefined;
   let attemptedAutoStart = false;
   const aiTimers: ReturnType<typeof setTimeout>[] = [];
 
@@ -46,6 +49,18 @@ function QuestionnaireStepper() {
   const getSpeechCtor = () =>
     (globalThis as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }).SpeechRecognition
       ?? (globalThis as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }).webkitSpeechRecognition;
+  const speechSupported = () => Capacitor.isNativePlatform() || Boolean(getSpeechCtor());
+  const getNativeSpeechLanguage = () => {
+    const language = globalThis.navigator?.language || 'en-US';
+    return language.toLowerCase().startsWith('es') ? 'es-US' : language;
+  };
+  const getNativeSpeechErrorMessage = (error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error || '');
+    if (/no speech input/i.test(message)) return 'No voice was detected. Tap the mic and speak closer to the emulator microphone.';
+    if (/network/i.test(message)) return 'Speech recognition needs network access on this emulator.';
+    if (/permission/i.test(message)) return 'Microphone permission is required for voice capture.';
+    return message || 'Microphone could not start. Use demo notes.';
+  };
   const updateTranscript = (value: string) => actions.updateAnswer(VOICE_NOTE_ID, value);
   const appendTranscript = (value: string) => {
     const cleanValue = value.trim();
@@ -53,17 +68,90 @@ function QuestionnaireStepper() {
     const current = transcript().trim();
     updateTranscript(`${current}${current ? ' ' : ''}${cleanValue}`);
   };
+  const clearNativeListeners = () => {
+    void nativeStateListener?.remove().catch(() => undefined);
+    nativeStateListener = undefined;
+  };
   const stopVoiceCapture = () => {
     setIsListening(false);
-    setInterimTranscript('');
     recognition?.stop?.();
     recognition = undefined;
+    if (nativeListening) void SpeechRecognition.stop().catch(() => undefined);
+    nativeListening = false;
+    clearNativeListeners();
+    setInterimTranscript('');
   };
   const disableVoiceCapture = () => {
     setIsVoiceDisabled(true);
     stopVoiceCapture();
   };
+  const startNativeVoiceCapture = async () => {
+    if (nativeListening || isListening()) return;
+
+    try {
+      const availability = await SpeechRecognition.available();
+      if (!availability.available) {
+        setIsVoiceDisabled(true);
+        actions.showToast('Native speech recognition is not available on this device.');
+        return;
+      }
+
+      const permissions = await SpeechRecognition.checkPermissions();
+      const permissionState = permissions.speechRecognition === 'granted'
+        ? permissions.speechRecognition
+        : (await SpeechRecognition.requestPermissions()).speechRecognition;
+      if (permissionState !== 'granted') {
+        setIsVoiceDisabled(true);
+        actions.showToast('Microphone permission is required for voice capture.');
+        return;
+      }
+
+      clearNativeListeners();
+      setInterimTranscript('');
+      nativeStateListener = await SpeechRecognition.addListener('listeningState', (data) => {
+        if (data.status === 'started') {
+          nativeListening = true;
+          setIsListening(true);
+          return;
+        }
+        nativeListening = false;
+        setIsListening(false);
+        setInterimTranscript('');
+      });
+
+      setIsVoiceDisabled(false);
+      nativeListening = true;
+      setIsListening(true);
+      setInterimTranscript('Listening...');
+      const result = await SpeechRecognition.start({
+        language: getNativeSpeechLanguage(),
+        maxResults: 5,
+        partialResults: false,
+        popup: false,
+        prompt: 'Talk naturally about the customer meeting.',
+      });
+      const bestFinalMatch = result.matches?.find((match) => match.trim());
+      if (bestFinalMatch) {
+        appendTranscript(bestFinalMatch);
+        actions.showToast('Voice note captured.');
+      } else {
+        actions.showToast('No voice was detected. Try again or use demo notes.');
+      }
+    } catch (error) {
+      actions.showToast(getNativeSpeechErrorMessage(error));
+    } finally {
+      nativeListening = false;
+      setIsListening(false);
+      setInterimTranscript('');
+      clearNativeListeners();
+    }
+  };
   const startVoiceCapture = () => {
+    if (Capacitor.isNativePlatform()) {
+      void startNativeVoiceCapture();
+      return;
+    }
+
     const SpeechCtor = getSpeechCtor();
     if (!SpeechCtor || recognition || isListening()) return;
 
@@ -130,6 +218,7 @@ function QuestionnaireStepper() {
   };
 
   createEffect(() => {
+    if (Capacitor.isNativePlatform()) return;
     if (attemptedAutoStart || !state.questionnaire.visitId || review() || !speechSupported() || isVoiceDisabled()) return;
     attemptedAutoStart = true;
     setTimeout(startVoiceCapture, 180);
@@ -169,7 +258,7 @@ function QuestionnaireStepper() {
               onClick={() => (isListening() ? disableVoiceCapture() : startVoiceCapture())}
             >
               {isListening() ? <MicOff size={18} /> : <Mic size={18} />}
-              {isListening() ? 'Turn off microphone' : 'Turn microphone back on'}
+              {isListening() ? 'Stop voice capture' : 'Start voice capture'}
             </button>
             <button class="secondary-action wide" disabled={isListening()} onClick={useDemoTranscript}>
               <Sparkles size={18} />
