@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: salesagent-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: salesagent
+    ports:
+      - "5432:5432"
+    volumes:
+      - salesagent-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  salesagent-postgres-data:

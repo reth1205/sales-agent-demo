@@ -22,6 +22,18 @@ npm run cap:open:android
 
 See `docs/capacitor-mobile.md` for push notification setup and native build notes.
 
+## Backend
+
+A real backend (ASP.NET Core + Postgres) is under active development in `server/`. See
+`server/README.md` to run it locally. The frontend is migrating resource-by-resource from mock
+data in `src/data.ts` to calling it.
+
+## Contributing / building a feature
+
+Backend and frontend feature work goes through a documented multi-agent pipeline —
+**start at [`.claude/GUIA.md`](.claude/GUIA.md)** for how it works, who owns what, and where
+to begin whether you're adding a product feature or maintaining the pipeline itself.
+
 ## Demo script
 
 1. Sign in as Sofia Rivera.

@@ -4,3 +4,10 @@ dist/
 *.tsbuildinfo
 .env
 .env.local
+
+# .NET (server/)
+server/**/bin/
+server/**/obj/
+server/*.user
+appsettings.Local.json
+appsettings.Production.json
