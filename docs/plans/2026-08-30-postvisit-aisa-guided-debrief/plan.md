@@ -1,7 +1,7 @@
 ---
-status: open
+status: closed
 created: 2026-08-30
-closed:
+closed: 2026-08-30
 ---
 
 # Entrevista post-visita conducida por script AI (guided debrief)
@@ -134,5 +134,22 @@ Cada agente dispatcheado en este plan usa estos nombres verbatim en code, tests,
 
 ## Improvements (llenado en Etapa 5 de `/feature`, al cerrar)
 
-<Cross-task themes destilados de `feedback/*/Proposed guide updates`, cada uno apuntando al
-archivo real que se actualizó o se va a actualizar.>
+Dos temas cruzaron las 4 fases de feedback (architect, developer, auditor ciclo 1, auditor ciclo 2),
+ambos sobre la misma falla raíz: la dispatch card afirmó o esperó comportamiento sin que el
+conductor lo verificara con la misma disciplina que ya aplica a las claims negativas.
+
+1. **Claims positivas sobre comportamiento existente sin grep de respaldo.** La card de este plan
+   afirmó que los comandos de voz EN/ES "ya" existían — no existían (grep cero hits), y el
+   architect tuvo que gastar una ronda de verificación completa antes de poder continuar. Aplicado:
+   `docs/plans/_templates/plan.md` § Reglas de BRIEF ACCURACY ahora exige el mismo grep-antes-de-
+   escribir para claims positivas que ya exigía para las negativas.
+2. **ACs "en modo X, ocurre Y automáticamente" sin instrucción de verificar el guard.** AC5 pedía
+   narración solo en modo voz; el developer implementó cancelación/limpieza correctas pero disparó
+   la narración en ambos modos — solo lo atrapó la auditoría, costando un ciclo de remediación.
+   Aplicado: `docs/plans/_templates/plan.md` § Reglas de BRIEF ACCURACY ahora exige verificar
+   explícitamente que el guard lee la señal de modo/estado nombrada, no solo su comportamiento de
+   cancelación.
+
+Diferido a `/improve` (no es hard-gate — preventivo, ningún defecto llegó a producción): agregar a
+"Self-verification" de `rx-ui-architect` un chequeo para texto generado que entra a un matcher de
+keywords existente (evitar auto-disparo), propuesto en el feedback del architect.

@@ -30,4 +30,4 @@ services.ts was mechanical rather than exploratory. The explicit "confirm with `
   "confirm the triggering effect/handler actually reads the named mode/state signal in its guard,
   not just its dependency list" — since an effect can satisfy "cancels on change, no overlap"
   while still firing unconditionally across every mode, which is the exact shape of the AC5 miss
-  found here. Status: proposed.
+  found here. Status: applied — docs/plans/_templates/plan.md § Reglas de BRIEF ACCURACY.

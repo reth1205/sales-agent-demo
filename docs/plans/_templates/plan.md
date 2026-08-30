@@ -48,6 +48,19 @@ Cada agente dispatcheado en este plan usa estos nombres verbatim en code, tests,
 - Para superficie compartida nueva, especifica el OUTCOME, no el mecanismo.
 - Un re-settlement (una decisión que cambia mid-plan) actualiza cada statement derivado de ella
   en el mismo edit — nunca deja una tabla desactualizada apuntando a la decisión vieja.
+- Toda afirmación POSITIVA sobre comportamiento EXISTENTE que entre en ACCEPTANCE o en "Fuera de
+  alcance" ("ya reconocidos", "ya existe", "hoy funciona") lleva el grep que la verifica,
+  ejecutado por el conductor antes de escribir la card — igual que ya se exige para las claims
+  negativas ("cero call sites, confirmado por grep"). Una card afirmó comandos de voz EN/ES "ya
+  reconocidos" que no existían en el repo (grep cero hits); le costó al architect downstream una
+  ronda de verificación completa antes de poder continuar (`docs/plans/2026-08-30-postvisit-aisa-guided-debrief/feedback/phase-01-postvisit-guided-debrief--rx-ui-architect.md`).
+- Para un AC frasado como "en modo/estado X, ocurre Y automáticamente", el brief exige verificar
+  explícitamente que el guard/efecto LEE esa señal de modo/estado — no solo que cancela/limpia
+  correctamente. Un efecto puede cumplir "sin solape, se limpia al desmontar" y aun así dispararse
+  incondicionalmente en todos los modos. Un AC de este tipo pidió narración solo en modo voz; el
+  efecto canceló/limpió audio correctamente pero disparó la narración en ambos modos — detectado
+  recién en auditoría, requirió un ciclo de remediación
+  (`docs/plans/2026-08-30-postvisit-aisa-guided-debrief/feedback/phase-01-postvisit-guided-debrief--rx-ui-auditor.md`).
 
 ## Improvements (llenado en Etapa 5 de `/feature`, al cerrar)
 

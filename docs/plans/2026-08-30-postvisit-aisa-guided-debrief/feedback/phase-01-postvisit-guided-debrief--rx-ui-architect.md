@@ -29,5 +29,5 @@
 
 | Guía | Cambio propuesto | Estado |
 |---|---|---|
-| `.claude/skills/feature` (redacción de la card) | Toda afirmación sobre comportamiento existente que entre en ACCEPTANCE ("ya reconocidos", "ya existe", "hoy funciona") debe llevar el grep que la verifica, ejecutado por el conductor. Las claims *negativas* de esta card ("cero call sites, confirmado por grep") sí venían verificadas; las positivas no. | proposed |
-| `.claude/agents/rx-ui-architect.md` | Agregar a "Self-verification": cuando el brief hace que texto generado por código entre a un matcher de keywords existente, verificar que el texto generado no dispare el matcher por sí solo. | proposed |
+| `.claude/skills/feature` (redacción de la card) | Toda afirmación sobre comportamiento existente que entre en ACCEPTANCE ("ya reconocidos", "ya existe", "hoy funciona") debe llevar el grep que la verifica, ejecutado por el conductor. Las claims *negativas* de esta card ("cero call sites, confirmado por grep") sí venían verificadas; las positivas no. | applied — docs/plans/_templates/plan.md § Reglas de BRIEF ACCURACY |
+| `.claude/agents/rx-ui-architect.md` | Agregar a "Self-verification": cuando el brief hace que texto generado por código entre a un matcher de keywords existente, verificar que el texto generado no dispare el matcher por sí solo. | deferred to /improve — preventivo (ningún defecto llegó a producción en este plan), no es hard-gate |
