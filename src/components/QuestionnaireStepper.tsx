@@ -277,7 +277,9 @@ function QuestionnaireStepper() {
     if (!question) return;
     stopVoiceCapture();
     cancelSpeech();
-    speakText(question.prompt, 'en-US');
+    if (state.questionnaire.mode === 'voice') {
+      speakText(question.prompt, 'en-US');
+    }
   });
 
   onCleanup(() => {

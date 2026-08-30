@@ -21,6 +21,15 @@ devuelve undefined, es la respuesta" but doesn't say what happens when the *last
 uses (so it finishes on the last question, consistent with AC3), but this required inference
 rather than being stated.
 
+**Remediation 1/2 (post-audit):** the AC5 `createEffect` spoke the active question's prompt
+unconditionally, in both `manual` and `voice` mode — missed that AC5 gates narration on
+`state.questionnaire.mode === 'voice'`, not just "no audio overlap." Wrapped the `speakText`
+call alone in that check; `stopVoiceCapture()`/`cancelSpeech()` stay unconditional so switching
+modes mid-question never leaves capture or audio hanging. `npm run build` reconfirmed green.
+This was a spec-reading miss on my part, not an ambiguity in the brief — AC5's own text says
+"En modo voz, la pregunta activa se habla automáticamente," which I under-weighted while
+focused on the overlap/cleanup mechanics.
+
 ## Proposed guide updates
 
 - None blocking. The brief's practice of pre-shipping both the store/services surface AND the
