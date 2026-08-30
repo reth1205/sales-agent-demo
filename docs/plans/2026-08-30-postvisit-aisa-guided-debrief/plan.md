@@ -94,7 +94,7 @@ Cada agente dispatcheado en este plan usa estos nombres verbatim en code, tests,
 
 ### Fase 1 — Entrevista post-visita conducida por script AI
 
-- [ ] **postvisit-guided-debrief** — executor: `/rx-ui-feature` — lane: Full
+- [x] **postvisit-guided-debrief** — executor: `/rx-ui-feature` — lane: Full
   Brief: Rediseñar el flujo de `src/views/QuestionnairePage.tsx` +
   `src/components/QuestionnaireStepper.tsx` para que la entrevista post-visita sea conducida
   pregunta-por-pregunta por un script AI simulado, en vez del modelo actual de escucha pasiva de
