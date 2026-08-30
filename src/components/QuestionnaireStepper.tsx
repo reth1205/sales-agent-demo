@@ -1,11 +1,11 @@
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
-import { Bot, CheckCircle2, ClipboardCheck, LoaderCircle, Mic, MicOff, Sparkles } from 'lucide-solid';
-import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js';
+import { AlertCircle, Bot, CheckCircle2, ChevronLeft, ChevronRight, Circle, ClipboardCheck, LoaderCircle, Mic, MicOff, Sparkles } from 'lucide-solid';
+import { createEffect, createMemo, createSignal, For, onCleanup, Show } from 'solid-js';
 import { getVisitAccount } from '../selectors';
+import { buildSimulatedObjectiveAnswer, cancelSpeech, combineDebriefText, evaluateVisitObjectives, matchVoiceNavigationCommand, speakText } from '../services';
 import { actions, state } from '../store';
-
-const VOICE_NOTE_ID = 'voice-debrief-notes';
+import type { VoiceNavigationCommand } from '../services';
 
 const aiReviewSteps = [
   'Reading captured conversation',
@@ -14,13 +14,11 @@ const aiReviewSteps = [
   'Ready for objective review',
 ];
 
-const demoTranscript = [
-  'Meeting lasted 32 minutes with Mariana Torres, procurement, and the operations team.',
-  'They confirmed budget approval for the route intelligence pilot and asked us to move the opportunity to Proposal.',
-  'Implementation timeline is tight because rollout needs to begin before the next store opening.',
-  'Contact update: Mariana Torres remains the champion, and procurement needs final pricing confirmation.',
-  'Task: send the updated proposal and pricing deck next week, then schedule the technical review meeting.',
-].join(' ');
+const objectiveStatusLabels = {
+  met: 'Met',
+  partial: 'Needs review',
+  missed: 'Missing',
+};
 
 function QuestionnaireStepper() {
   const review = () => state.questionnaire.review;
@@ -29,20 +27,39 @@ function QuestionnaireStepper() {
     const currentVisit = visit();
     return currentVisit ? getVisitAccount(currentVisit) : undefined;
   };
+  const opportunity = () => {
+    const currentAccount = account();
+    return currentAccount ? state.crm.opportunities.find((item) => item.accountId === currentAccount.id) : undefined;
+  };
+
+  const snapshot = () => state.questionnaire.snapshot;
+  const totalQuestions = () => snapshot().length;
+  const activeIndex = () => state.questionnaire.currentQuestionIndex;
+  const activeQuestion = () => snapshot()[activeIndex()];
+  const isLastQuestion = () => activeIndex() >= totalQuestions() - 1;
+  const answer = () => state.questionnaire.answers[activeQuestion()?.id ?? ''] ?? '';
+  const hasAnyAnswer = () => Object.values(state.questionnaire.answers).some((value) => value.trim());
+
+  const objectives = createMemo(() => {
+    const currentAccount = account();
+    if (!currentAccount) return [];
+    return evaluateVisitObjectives(
+      combineDebriefText(snapshot(), state.questionnaire.answers),
+      currentAccount,
+      opportunity(),
+    );
+  });
+
   const [isListening, setIsListening] = createSignal(false);
   const [isAnalyzing, setIsAnalyzing] = createSignal(false);
   const [aiStepIndex, setAiStepIndex] = createSignal(0);
   const [interimTranscript, setInterimTranscript] = createSignal('');
   const [isVoiceDisabled, setIsVoiceDisabled] = createSignal(false);
-  const [isCaptureFinished, setIsCaptureFinished] = createSignal(false);
   let recognition: SpeechRecognitionLike | undefined;
   let nativeListening = false;
   let nativeStateListener: PluginListenerHandle | undefined;
-  let attemptedAutoStart = false;
   const aiTimers: ReturnType<typeof setTimeout>[] = [];
 
-  const transcript = () => state.questionnaire.answers[VOICE_NOTE_ID] ?? '';
-  const hasTranscript = () => Boolean(transcript().trim());
   const clearAiTimers = () => {
     aiTimers.forEach((timer) => clearTimeout(timer));
     aiTimers.length = 0;
@@ -62,13 +79,35 @@ function QuestionnaireStepper() {
     if (/permission/i.test(message)) return 'Microphone permission is required for listening.';
     return message || 'Microphone could not start. Use demo notes.';
   };
-  const updateTranscript = (value: string) => actions.updateAnswer(VOICE_NOTE_ID, value);
-  const appendTranscript = (value: string) => {
+
+  const handleVoiceCommand = (command: VoiceNavigationCommand) => {
+    if (command === 'previous') {
+      actions.previousQuestion();
+      return;
+    }
+    if (command === 'next') {
+      handleNext();
+      return;
+    }
+    startAiReview();
+  };
+  const appendAnswerText = (value: string) => {
     const cleanValue = value.trim();
     if (!cleanValue) return;
-    const current = transcript().trim();
-    updateTranscript(`${current}${current ? ' ' : ''}${cleanValue}`);
+    const question = activeQuestion();
+    if (!question) return;
+    const current = (state.questionnaire.answers[question.id] ?? '').trim();
+    actions.updateAnswer(question.id, `${current}${current ? ' ' : ''}${cleanValue}`);
   };
+  const handleCapturedSpeech = (text: string) => {
+    const command = matchVoiceNavigationCommand(text);
+    if (command) {
+      handleVoiceCommand(command);
+      return;
+    }
+    appendAnswerText(text);
+  };
+
   const clearNativeListeners = () => {
     void nativeStateListener?.remove().catch(() => undefined);
     nativeStateListener = undefined;
@@ -129,14 +168,14 @@ function QuestionnaireStepper() {
         maxResults: 5,
         partialResults: false,
         popup: false,
-        prompt: 'Talk naturally about the customer meeting.',
+        prompt: 'Answer the question, or say next, previous, or finish.',
       });
       const bestFinalMatch = result.matches?.find((match) => match.trim());
       if (bestFinalMatch) {
-        appendTranscript(bestFinalMatch);
-        actions.showToast('Conversation captured.');
+        handleCapturedSpeech(bestFinalMatch);
+        actions.showToast('Answer captured.');
       } else {
-        actions.showToast('No voice was detected. Try again or use demo audio.');
+        actions.showToast('No voice was detected. Try again or simulate the answer.');
       }
     } catch (error) {
       actions.showToast(getNativeSpeechErrorMessage(error));
@@ -177,11 +216,11 @@ function QuestionnaireStepper() {
       }
 
       setInterimTranscript(interim);
-      if (finalTranscript) appendTranscript(finalTranscript);
+      if (finalTranscript) handleCapturedSpeech(finalTranscript);
     };
     recognition.onerror = () => {
       stopVoiceCapture();
-      actions.showToast('Listening failed. Demo audio is ready.');
+      actions.showToast('Listening failed. Simulate the answer instead.');
     };
     recognition.onend = () => {
       recognition = undefined;
@@ -194,18 +233,24 @@ function QuestionnaireStepper() {
       setIsListening(true);
     } catch {
       recognition = undefined;
-      actions.showToast('Microphone could not start. Use demo notes.');
+      actions.showToast('Microphone could not start. Simulate the answer instead.');
     }
   };
-  const useDemoTranscript = () => {
-    updateTranscript(demoTranscript.replace('Mariana Torres', account()?.name === 'Acme Corporation' ? 'Mariana Torres' : 'the customer contact'));
-    actions.showToast('Demo voice note captured.');
+  const handleSimulateAnswer = () => {
+    const currentAccount = account();
+    const question = activeQuestion();
+    if (!currentAccount || !question) return;
+    actions.updateAnswer(question.id, buildSimulatedObjectiveAnswer(question.id, currentAccount, opportunity()));
+    actions.showToast('Simulated answer captured.');
   };
   const startAiReview = () => {
-    if (isAnalyzing() || !hasTranscript()) return;
+    if (isAnalyzing() || !hasAnyAnswer()) {
+      if (!hasAnyAnswer()) actions.showToast('Answer at least one question before finishing.');
+      return;
+    }
     stopVoiceCapture();
+    cancelSpeech();
     clearAiTimers();
-    setIsCaptureFinished(true);
     setIsAnalyzing(true);
     setAiStepIndex(0);
     actions.showToast('AI is checking interview objectives...');
@@ -218,24 +263,28 @@ function QuestionnaireStepper() {
       clearAiTimers();
     }, 720 * aiReviewSteps.length));
   };
-  const finishListeningSession = () => {
-    stopVoiceCapture();
-    if (!hasTranscript()) {
-      actions.showToast('No conversation captured yet. Start listening or use the demo audio.');
-      return;
+  const handleNext = () => {
+    if (isLastQuestion()) {
+      startAiReview();
+    } else {
+      actions.nextQuestion();
     }
-    startAiReview();
   };
 
   createEffect(() => {
-    if (Capacitor.isNativePlatform()) return;
-    if (attemptedAutoStart || !state.questionnaire.visitId || review() || isCaptureFinished() || !speechSupported() || isVoiceDisabled()) return;
-    attemptedAutoStart = true;
-    setTimeout(startVoiceCapture, 180);
+    if (review()) return;
+    const question = activeQuestion();
+    if (!question) return;
+    stopVoiceCapture();
+    cancelSpeech();
+    if (state.questionnaire.mode === 'voice') {
+      speakText(question.prompt, 'en-US');
+    }
   });
 
   onCleanup(() => {
     stopVoiceCapture();
+    cancelSpeech();
     clearAiTimers();
   });
 
@@ -244,41 +293,131 @@ function QuestionnaireStepper() {
       <section class="panel questionnaire-panel stepper-panel voice-debrief-panel">
         <div class="questionnaire-topbar">
           <div>
-            <span class="eyebrow">Post interview listening</span>
-            <h2>{account()?.name ?? 'Customer meeting'} capture</h2>
+            <span class="eyebrow">Guided debrief</span>
+            <h2>{account()?.name ?? 'Customer meeting'} interview</h2>
           </div>
         </div>
-        <div class={isListening() ? 'voice-card active' : 'voice-card'}>
-          <div class="voice-status">
-            <Mic size={24} />
-            <div>
-              <strong>{isListening() ? 'Listening to the recap' : isCaptureFinished() ? 'Conversation captured' : 'Ready to listen'}</strong>
-              <span>{isCaptureFinished() ? 'The assistant is checking the brief objectives.' : 'Speak naturally. The assistant will only listen until you finish.'}</span>
-            </div>
+
+        <div class="question-progress">
+          <span style={{ width: `${totalQuestions() ? ((activeIndex() + 1) / totalQuestions()) * 100 : 0}%` }} />
+        </div>
+        <p>Question {activeIndex() + 1} of {totalQuestions()}</p>
+
+        <div class="objective-review-card">
+          <div class="objective-review-header">
+            <strong>Objective checklist</strong>
+            <span>Updates after every answer.</span>
           </div>
-          <div class="voice-transcript" aria-live="polite">
-            <span class="eyebrow">Captured conversation</span>
-            <p>{interimTranscript() || transcript() || 'The spoken recap will appear here while the assistant listens.'}</p>
+          <div class="objective-review-list">
+            <For each={objectives()}>
+              {(item, index) => (
+                <button
+                  type="button"
+                  class={`objective-review-item ${item.status}${activeQuestion()?.id === item.id ? ' active' : ''}`}
+                  onClick={() => actions.goToQuestion(index())}
+                >
+                  <div class="objective-review-icon">
+                    <Show
+                      when={item.status === 'met'}
+                      fallback={item.status === 'partial' ? <AlertCircle size={17} /> : <Circle size={17} />}
+                    >
+                      <CheckCircle2 size={17} />
+                    </Show>
+                  </div>
+                  <div>
+                    <div class="objective-review-title">
+                      <strong>{item.label}</strong>
+                      <span>{objectiveStatusLabels[item.status]}</span>
+                    </div>
+                    <p>{item.detail}</p>
+                  </div>
+                </button>
+              )}
+            </For>
           </div>
-          <div class="voice-action-row">
-            <button
-              class={isListening() ? 'secondary-action wide' : 'primary-action wide'}
-              aria-pressed={isListening()}
-              disabled={!speechSupported() || isAnalyzing() || isCaptureFinished()}
-              onClick={() => (isListening() ? disableVoiceCapture() : startVoiceCapture())}
-            >
-              {isListening() ? <MicOff size={18} /> : <Mic size={18} />}
-              {isListening() ? 'Pause listening' : 'Start listening'}
-            </button>
-            <button class="secondary-action wide" disabled={isListening() || isAnalyzing() || isCaptureFinished()} onClick={useDemoTranscript}>
+        </div>
+
+        <nav class="segmented-control" aria-label="Answer mode">
+          <button
+            type="button"
+            class={state.questionnaire.mode === 'manual' ? 'selected' : ''}
+            aria-pressed={state.questionnaire.mode === 'manual'}
+            onClick={() => actions.setQuestionnaireMode('manual')}
+          >
+            Text
+          </button>
+          <button
+            type="button"
+            class={state.questionnaire.mode === 'voice' ? 'selected' : ''}
+            aria-pressed={state.questionnaire.mode === 'voice'}
+            onClick={() => actions.setQuestionnaireMode('voice')}
+          >
+            Voice
+          </button>
+        </nav>
+
+        <div class="question-card">
+          <span class="eyebrow">The assistant asks</span>
+          <h2>{activeQuestion()?.prompt}</h2>
+
+          <Show
+            when={state.questionnaire.mode === 'manual'}
+            fallback={
+              <div class={isListening() ? 'voice-card active' : 'voice-card'}>
+                <div class="voice-status">
+                  <Mic size={24} />
+                  <div>
+                    <strong>{isListening() ? 'Listening for your answer' : 'Ready to listen'}</strong>
+                    <span>Say your answer, or say "next", "previous", or "finish" to navigate.</span>
+                  </div>
+                </div>
+                <div class="voice-transcript" aria-live="polite">
+                  <span class="eyebrow">Captured answer</span>
+                  <p>{interimTranscript() || answer() || 'Your spoken answer will appear here.'}</p>
+                </div>
+                <div class="voice-action-row">
+                  <button
+                    class={isListening() ? 'secondary-action wide' : 'primary-action wide'}
+                    aria-pressed={isListening()}
+                    disabled={!speechSupported() || isAnalyzing()}
+                    onClick={() => (isListening() ? disableVoiceCapture() : startVoiceCapture())}
+                  >
+                    {isListening() ? <MicOff size={18} /> : <Mic size={18} />}
+                    {isListening() ? 'Pause listening' : 'Start listening'}
+                  </button>
+                  <button class="secondary-action wide" disabled={isListening() || isAnalyzing()} onClick={handleSimulateAnswer}>
+                    <Sparkles size={18} />
+                    Simulate answer
+                  </button>
+                </div>
+                <Show when={!speechSupported()}>
+                  <p class="assistant-demo-note">Voice recognition is not available in this browser. Use the simulated answer to run the demo.</p>
+                </Show>
+                <Show when={isVoiceDisabled()}>
+                  <p class="assistant-demo-note">Microphone unavailable. Use the simulated answer to continue.</p>
+                </Show>
+              </div>
+            }
+          >
+            <label class="field">
+              <span>Your answer</span>
+              <textarea
+                rows={5}
+                value={answer()}
+                disabled={isAnalyzing()}
+                onInput={(event) => {
+                  const question = activeQuestion();
+                  if (question) actions.updateAnswer(question.id, event.currentTarget.value);
+                }}
+              />
+            </label>
+            <button class="secondary-action wide" disabled={isAnalyzing()} onClick={handleSimulateAnswer}>
               <Sparkles size={18} />
-              Simulate meeting audio
+              Simulate answer
             </button>
-          </div>
-          <Show when={!speechSupported()}>
-            <p class="assistant-demo-note">Voice recognition is not available in this browser. Use the simulated voice note to run the demo.</p>
           </Show>
         </div>
+
         <Show when={isAnalyzing()}>
           <div class="ai-review-card" aria-live="polite">
             <div class="ai-review-header">
@@ -301,9 +440,23 @@ function QuestionnaireStepper() {
             </div>
           </div>
         </Show>
-        <button class="primary-action wide" disabled={!hasTranscript() || isAnalyzing() || isCaptureFinished()} onClick={finishListeningSession}>
-          {isAnalyzing() ? <LoaderCircle size={18} class="sync-spinner" /> : <ClipboardCheck size={18} />}
-          {isAnalyzing() ? 'Checking objectives' : 'Finish and check objectives'}
+
+        <div class="question-action-bar">
+          <button class="secondary-action" disabled={activeIndex() === 0 || isAnalyzing()} onClick={() => actions.previousQuestion()}>
+            <ChevronLeft size={18} />
+            Previous
+          </button>
+          <button class="primary-action" disabled={isAnalyzing() || (isLastQuestion() && !hasAnyAnswer())} onClick={handleNext}>
+            <Show when={isLastQuestion()} fallback={<><ChevronRight size={18} />Next</>}>
+              {isAnalyzing() ? <LoaderCircle size={18} class="sync-spinner" /> : <ClipboardCheck size={18} />}
+              {isAnalyzing() ? 'Checking objectives' : 'Finish debrief'}
+            </Show>
+          </button>
+        </div>
+
+        <button class="secondary-action wide" disabled={!hasAnyAnswer() || isAnalyzing()} onClick={startAiReview}>
+          <ClipboardCheck size={18} />
+          Finish debrief now
         </button>
       </section>
     </Show>
