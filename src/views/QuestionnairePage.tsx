@@ -21,7 +21,7 @@ function QuestionnairePage() {
 
   return (
     <div class="content-stack questionnaire-page">
-      <Header title="Post Interview" subtitle="Passive listening and objective check" />
+      <Header title="Post Interview" subtitle="Guided objective debrief with the assistant" />
       <Show when={visit()} fallback={
         <section class="panel">
           <h2>Visit not found</h2>
@@ -41,8 +41,8 @@ function QuestionnairePage() {
             <Switch>
               <Match when={currentVisit().status === 'Scheduled' || currentVisit().status === 'InProgress'}>
                 <section class="panel">
-                  <h2>Listening locked</h2>
-                  <p>Finish the customer interview before starting post-interview listening.</p>
+                  <h2>Debrief locked</h2>
+                  <p>Finish the customer interview before starting the guided post-interview debrief.</p>
                   <A class="primary-action wide" href="/schedule">Back to Schedule</A>
                 </section>
               </Match>

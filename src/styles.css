@@ -1490,6 +1490,15 @@ textarea {
   background: #f7fafb;
   border: 1px solid #edf1f4;
   border-radius: 8px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.objective-review-item.active {
+  border-color: #0f6c7a;
+  box-shadow: 0 0 0 2px rgba(15, 108, 122, 0.15);
 }
 
 .objective-review-icon {
