@@ -14,6 +14,7 @@ import type {
   Opportunity,
   PostMeetingExtraction,
   PreMeetingBriefing,
+  QuestionCategory,
   ReviewSummary,
   ScheduledVisit,
   Task,
@@ -385,7 +386,84 @@ export const buildMapDemoSteps = (
 export const getActiveQuestions = (questions: InterviewQuestion[]) =>
   [...questions].filter((question) => question.isActive).sort((a, b) => a.order - b.order);
 
-const combineDebriefText = (questions: InterviewQuestion[], answers: Record<string, string>) => {
+/**
+ * Spoken-language prompts for the five fixed visit objectives.
+ *
+ * IMPORTANT: each prompt is deliberately written WITHOUT the keyword signals that
+ * `evaluateVisitObjectives` matches on (budget/approval/contract/sign off, opportunity/proposal/
+ * pilot/renewal, timeline/implementation/rollout/delivery/schedule, champion/procurement/
+ * stakeholder/contact/decision maker, task/follow up/send/next week/meeting/pricing).
+ * `combineDebriefText` folds the prompt of every ANSWERED question into the evaluated text, so a
+ * prompt containing its own signals would mark its objective `met` from the question copy alone.
+ * Reword with care.
+ */
+const objectiveQuestionCopy: Record<string, { prompt: string; category: QuestionCategory }> = {
+  approval: {
+    prompt: 'Let us start with the money. Who still has to authorize the spend on their side, and where does that stand today?',
+    category: 'opportunity',
+  },
+  opportunity: {
+    prompt: 'How did the deal itself move in this conversation, and what is the very next step you agreed on?',
+    category: 'opportunity',
+  },
+  timeline: {
+    prompt: 'What did they say about when this has to go live, and are any dates at risk?',
+    category: 'meeting',
+  },
+  stakeholders: {
+    prompt: 'Who was in the room with you, and did anyone change role or influence on their side?',
+    category: 'account',
+  },
+  'follow-up': {
+    prompt: 'Finally, what did you commit to before you left, and when are the two of you speaking again?',
+    category: 'followUp',
+  },
+};
+
+export const buildObjectiveInterviewQuestions = (
+  account: Account,
+  opportunity: Opportunity | undefined,
+): InterviewQuestion[] =>
+  buildVisitObjectives(account, opportunity).map((objective, index) => {
+    const copy = objectiveQuestionCopy[objective.id];
+    return {
+      id: objective.id,
+      prompt: copy?.prompt ?? objective.detail,
+      isActive: true,
+      order: index + 1,
+      category: copy?.category ?? 'meeting',
+      answerType: 'text',
+    };
+  });
+
+export const buildSimulatedObjectiveAnswer = (
+  questionId: string,
+  account: Account,
+  opportunity: Opportunity | undefined,
+) => {
+  const opportunityName = opportunity?.name ?? 'the open opportunity';
+  const simulated: Record<string, string> = {
+    approval: 'They confirmed budget approval for this fiscal year, and the contract just needs their VP to sign off.',
+    opportunity: `They asked us to move ${opportunityName} forward, so the opportunity goes to proposal review with a clear next step.`,
+    timeline: 'Implementation has to begin before the next store opening, so the rollout timeline is tight but committed.',
+    stakeholders: `Our champion at ${account.name} stays in place, and procurement now joins as an additional decision maker.`,
+    'follow-up': 'I will send the updated pricing deck next week and we booked the technical review meeting as a follow up.',
+  };
+  return simulated[questionId] ?? 'The customer confirmed the current plan and had no additional concerns on this point.';
+};
+
+export type VoiceNavigationCommand = 'next' | 'previous' | 'finish';
+
+export const matchVoiceNavigationCommand = (transcript: string): VoiceNavigationCommand | undefined => {
+  const normalized = transcript.trim().toLowerCase();
+  if (!normalized) return undefined;
+  if (/\b(next|siguiente|continuar)\b/.test(normalized)) return 'next';
+  if (/\b(previous|back|anterior|atras|atrás)\b/.test(normalized)) return 'previous';
+  if (/\b(finish|done|finalizar|terminar)\b/.test(normalized)) return 'finish';
+  return undefined;
+};
+
+export const combineDebriefText = (questions: InterviewQuestion[], answers: Record<string, string>) => {
   const questionIds = new Set(questions.map((question) => question.id));
   const promptedAnswers = questions
     .map((question) => {

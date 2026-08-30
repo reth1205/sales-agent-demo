@@ -17,7 +17,7 @@ import {
   territoryMetrics,
   visits,
 } from './data';
-import { assistantTiming, buildMapDemoSteps, buildNavigationUrl, buildPreMeetingBriefing, cancelSpeech, getActiveQuestions, getDistanceMeters, interpretVisitAnswers, makeId, pauseSpeech, resumeSpeech, speakText } from './services';
+import { assistantTiming, buildMapDemoSteps, buildNavigationUrl, buildObjectiveInterviewQuestions, buildPreMeetingBriefing, cancelSpeech, getActiveQuestions, getDistanceMeters, interpretVisitAnswers, makeId, pauseSpeech, resumeSpeech, speakText } from './services';
 import type {
   AssistantNotification,
   BehaviorKpiUpdate,
@@ -1001,7 +1001,12 @@ export const actions = {
     if (state.questionnaire.visitId === visitId && state.questionnaire.snapshot.length) {
       setState('questionnaire', 'mode', mode);
     } else {
-      const snapshot = getActiveQuestions(state.settings.questions);
+      const visit = state.visits.find((item) => item.id === visitId);
+      const account = visit ? state.crm.accounts.find((item) => item.id === visit.accountId) : undefined;
+      const opportunity = account ? state.crm.opportunities.find((item) => item.accountId === account.id) : undefined;
+      const snapshot = account
+        ? buildObjectiveInterviewQuestions(account, opportunity)
+        : getActiveQuestions(state.settings.questions);
       setState('questionnaire', {
         visitId,
         mode,
