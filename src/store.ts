@@ -561,6 +561,7 @@ export const actions = {
     persistAssistant();
     playNotificationSound();
     actions.showToast('Post-interview listening is ready.');
+    actions.openAssistantNotification(notificationId);
   },
   schedulePreMeetingDemo(visitId: string) {
     if (!state.assistant.isDemoMode) return;

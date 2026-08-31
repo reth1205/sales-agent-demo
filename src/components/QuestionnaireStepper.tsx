@@ -271,14 +271,23 @@ function QuestionnaireStepper() {
     }
   };
 
+  let speechToken = 0;
   createEffect(() => {
     if (review()) return;
     const question = activeQuestion();
     if (!question) return;
     stopVoiceCapture();
     cancelSpeech();
+    speechToken += 1;
+    const currentToken = speechToken;
+    const autoStartListening = () => {
+      if (currentToken !== speechToken) return;
+      if (review() || isVoiceDisabled()) return;
+      startVoiceCapture();
+    };
     if (state.questionnaire.mode === 'voice') {
-      speakText(question.prompt, 'en-US');
+      const spoke = speakText(question.prompt, 'en-US', autoStartListening);
+      if (!spoke && speechSupported()) autoStartListening();
     }
   });
 
@@ -357,20 +366,15 @@ function QuestionnaireStepper() {
         </nav>
 
         <div class="question-card">
-          <span class="eyebrow">The assistant asks</span>
-          <h2>{activeQuestion()?.prompt}</h2>
+          <Show when={state.questionnaire.mode === 'manual'}>
+            <span class="eyebrow">The assistant asks</span>
+            <h2>{activeQuestion()?.prompt}</h2>
+          </Show>
 
           <Show
             when={state.questionnaire.mode === 'manual'}
             fallback={
-              <div class={isListening() ? 'voice-card active' : 'voice-card'}>
-                <div class="voice-status">
-                  <Mic size={24} />
-                  <div>
-                    <strong>{isListening() ? 'Listening for your answer' : 'Ready to listen'}</strong>
-                    <span>Say your answer, or say "next", "previous", or "finish" to navigate.</span>
-                  </div>
-                </div>
+              <div class="voice-panel">
                 <div class="voice-transcript" aria-live="polite">
                   <span class="eyebrow">Captured answer</span>
                   <p>{interimTranscript() || answer() || 'Your spoken answer will appear here.'}</p>

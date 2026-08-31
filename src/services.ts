@@ -597,7 +597,7 @@ export const interpretVisitAnswers = (
   };
 };
 
-export const speakText = (text: string, lang = 'en-US') => {
+export const speakText = (text: string, lang = 'en-US', onEnd?: () => void) => {
   if (Capacitor.isNativePlatform()) {
     void TextToSpeech.stop()
       .catch(() => undefined)
@@ -610,7 +610,8 @@ export const speakText = (text: string, lang = 'en-US') => {
         category: 'playback',
         queueStrategy: QueueStrategy.Flush,
       }))
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .then(() => onEnd?.());
     return true;
   }
 
@@ -626,6 +627,10 @@ export const speakText = (text: string, lang = 'en-US') => {
     utterance.volume = 1;
     const voices = synth.getVoices();
     utterance.voice = voices.find((voice) => voice.lang === lang) ?? voices.find((voice) => voice.lang.startsWith(lang.slice(0, 2))) ?? null;
+    if (onEnd) {
+      utterance.onend = () => onEnd();
+      utterance.onerror = () => onEnd();
+    }
     synth.speak(utterance);
     setTimeout(() => {
       if (synth.paused) synth.resume();
