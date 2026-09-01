@@ -6,6 +6,7 @@ import { getVisitAccount } from '../selectors';
 import { buildDebriefTransitionCopy, buildSimulatedObjectiveAnswer, cancelSpeech, combineDebriefText, evaluateVisitObjectives, matchVoiceNavigationCommand, speakText } from '../services';
 import { actions, state } from '../store';
 import type { VoiceNavigationCommand } from '../services';
+import type { SpeechRecognitionCtorWindow, SpeechRecognitionLike, SpeechRecognitionResultEventLike } from '../types';
 
 const aiReviewSteps = [
   'Reading captured conversation',
@@ -72,8 +73,8 @@ function QuestionnaireStepper() {
     transitionTimers.length = 0;
   };
   const getSpeechCtor = () =>
-    (globalThis as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }).SpeechRecognition
-      ?? (globalThis as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }).webkitSpeechRecognition;
+    (globalThis as unknown as SpeechRecognitionCtorWindow).SpeechRecognition
+      ?? (globalThis as unknown as SpeechRecognitionCtorWindow).webkitSpeechRecognition;
   const speechSupported = () => Capacitor.isNativePlatform() || Boolean(getSpeechCtor());
   const getNativeSpeechLanguage = () => {
     const language = globalThis.navigator?.language || 'en-US';
@@ -508,25 +509,5 @@ function QuestionnaireStepper() {
     </Show>
   );
 }
-
-type SpeechRecognitionLike = {
-  lang: string;
-  continuous?: boolean;
-  interimResults?: boolean;
-  onresult: (event: SpeechRecognitionResultEventLike) => void;
-  onerror: () => void;
-  onend?: () => void;
-  start: () => void;
-  stop?: () => void;
-};
-
-type SpeechRecognitionResultEventLike = {
-  resultIndex?: number;
-  results: ArrayLike<SpeechRecognitionResultLike>;
-};
-
-type SpeechRecognitionResultLike = ArrayLike<{ transcript: string }> & {
-  isFinal?: boolean;
-};
 
 export default QuestionnaireStepper;

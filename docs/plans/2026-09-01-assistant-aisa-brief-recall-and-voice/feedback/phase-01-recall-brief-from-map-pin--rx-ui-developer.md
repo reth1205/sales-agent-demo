@@ -22,7 +22,10 @@ the banner disappears, which only works if completed visits are excluded.
   should verify that claim against the actual mutator (not just grep for readers) before relying
   on it in a guard — a field can be write-only-and-unread by everything except the new code being
   added, which is a different thing than truly inert.
+  → deferred to /improve — caught and corrected within this same task before shipping, not a
+  defect that reached the auditor or a user; no round-trip lost.
 - For map-pin-related UI tasks: this repo's demo dataset (`src/data.ts`) always pairs every
   account with a scheduled visit, so "account without a visit" scenarios can't be exercised via a
   literal pin click — worth noting in the architect/skill guidance so future cards either accept
   the Completed-visit proxy or pre-authorize a data.ts tweak.
+  → deferred to /improve — informational, no defect.

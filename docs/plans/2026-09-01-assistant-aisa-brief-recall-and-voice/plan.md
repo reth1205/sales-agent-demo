@@ -1,7 +1,7 @@
 ---
-status: open
+status: closed
 created: 2026-09-01
-closed:
+closed: 2026-09-01
 ---
 
 # AISA pre-visit brief: recall from map pin + voice walkthrough
@@ -121,7 +121,7 @@ real — la inconsistencia se nota y debilita la narrativa de "asistente convers
 
 ### Fase 2 — AISA pregunta, el rep responde por voz
 
-- [ ] **aisa-brief-voice-walkthrough** — executor: `/rx-ui-feature` — lane: Full
+- [x] **aisa-brief-voice-walkthrough** — executor: `/rx-ui-feature` — lane: Full
   (Full porque plausiblemente crea superficie compartida nueva — un hook/helper de captura de voz,
   si el architect decide factorizar el mecanismo hoy duplicado en `QuestionnaireStepper.tsx` — y
   porque el riesgo de la superficie de voz real amerita diseño explícito antes de implementar,
@@ -202,4 +202,38 @@ real — la inconsistencia se nota y debilita la narrativa de "asistente convers
 
 ## Improvements (llenado en Etapa 5 de `/feature`, al cerrar)
 
-<pendiente al cierre>
+**Fase 1** (Slice): auditoría limpia (0 CRITICAL/WARNING, 1 INFO no bloqueante sobre superposición
+UX entre el nuevo banner y `CustomerMapSummarySheet`, fuera de alcance de la card). El developer
+detectó y corrigió en la misma tarea una afirmación incorrecta de la card ("`visitBriefingAccountId`
+está inerte") — verificado empíricamente que en realidad `selectMapAccount` lo activa en cada tap
+de pin real; el auditor confirmó la corrección de forma independiente.
+
+**Fase 2** (Full): auditoría con 0 CRITICAL, 1 WARNING low (el comando de voz "finish"/"finalizar"
+saltaba al último prompt en vez de terminar el walkthrough — no bloqueante porque los controles
+manuales Previous/Next/Skip siempre cubrían "nunca stuck"), 1 INFO. El conductor aplicó el fix de
+una línea directamente (`handleVoiceCommand`, `setReachedEnd(true)`) en vez de correr un ciclo de
+remediación completo, dado el tamaño trivial del cambio — verificado con `npm run build`.
+
+Disposición de las 5 filas de *Proposed guide updates* del corpus de este plan (ver los archivos
+`feedback/*.md` para el detalle completo de cada una):
+- **Aplicada**: catálogo de `rx-ui-auditor` gana la fila S2 ("comando de voz que no cumple su
+  label") citando el defecto real de "finish" como caso de ejemplo — la única fila cuyo *Why*
+  nombraba un defecto que efectivamente llegó a shippear en el diff antes de la auditoría.
+- **Diferidas a `/improve`** (las 4 restantes, ninguna nombra un defecto shippeado — fricción de
+  proceso o sugerencias de ergonomía de card): verificar mutadores reales antes de confiar en un
+  campo "inerte" en una guarda; notar que el dataset demo empareja cada cuenta con una visita;
+  recomendar un booleano dedicado de "fin de secuencia" en flujos multi-step de estado local;
+  citar rangos de línea cuando una card referencia "mismo patrón que `<file>`".
+
+### Verificación en vivo (Etapa 4)
+
+Fase 1: Playwright headless — tap en pin de cuenta con visita → banner "Client brief ready" para
+esa cuenta → tap → `AisaBriefingDialog` abre en `prompt` en el mismo tick; visita `Completed`
+(proxy de "sin visita") → sin banner; cerrar sheet → re-tap del mismo pin → banner reaparece.
+`npm run build` limpio.
+
+Fase 2: Playwright headless — recorrido completo del path de fallback: Simulate answer (prompt 0)
+→ Skip (prompt 1) → Previous/Next → Simulate answer (prompt 2, último) → transcript correcto
+(prompt 1 correctamente omitido por Skip) → CTA row sin regresión → End briefing cierra limpio.
+Cero errores de consola. El path de micrófono real no es verificable sin hardware — code-wired,
+reportado como limitación conocida, no como cobertura completa.

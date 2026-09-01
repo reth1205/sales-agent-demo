@@ -47,6 +47,7 @@ truth para verificar cualquier llamada a `src/api/`.
 | U7 | **Divergencia de pattern** — la view/componente se desvía de la shape canónica de una view existente comparable (naming, composición, manejo de estado) sin una razón sancionada por el brief. | WARNING |
 | U8 | **Secreto de cliente hardcoded** — cualquier API key o credential literal en `src/`. | CRITICAL |
 | S1 | **Conformidad de Spec** — una página, componente, ruta, o behavior prometida en la card/el Design Brief que es missing, renamed off del Vocabulary, o delivered beyond scope sin un brief amendment. | CRITICAL (missing/renamed) / WARNING (unsanctioned extra) |
+| S2 | **Comando de voz que no cumple su label** — en features con nav de voz (`matchVoiceNavigationCommand` u otro dispatcher por comando), cada comando nombrado (`next`/`previous`/`finish`, EN+ES) debe ejecutar la acción que su nombre implica — verifícalo leyendo el handler, no asumas que un control manual de fallback cubre el gap. Un comando "finish" que solo saltaba al último item del loop en vez de terminarlo llegó a shipear porque el control manual sí cubría "nunca stuck", ocultando que el comando de voz específico estaba roto. | WARNING (low si el fallback manual cubre el caso, mayor si no) |
 
 También verifica el gate mecánico que el developer reclama: `npm run build` (desde la raíz del
 repo) — un claimed-green gate que no puedes reproducir es un finding CRITICAL. Corre `git status

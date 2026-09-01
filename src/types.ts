@@ -344,3 +344,35 @@ export type TerritoryMetric = {
 };
 
 export type ReportingTab = 'overview' | 'team' | 'accounts' | 'insights';
+
+/**
+ * Structural shims for the Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`).
+ * Not domain types — they live here because more than one component in `src/components/`
+ * drives browser speech recognition directly (`QuestionnaireStepper`, `AisaBriefingDialog`)
+ * and neither should import types from the other. Native (Capacitor) speech recognition uses
+ * `@capacitor-community/speech-recognition` and does not need these.
+ */
+export type SpeechRecognitionResultLike = ArrayLike<{ transcript: string }> & {
+  isFinal?: boolean;
+};
+
+export type SpeechRecognitionResultEventLike = {
+  resultIndex?: number;
+  results: ArrayLike<SpeechRecognitionResultLike>;
+};
+
+export type SpeechRecognitionLike = {
+  lang: string;
+  continuous?: boolean;
+  interimResults?: boolean;
+  onresult: (event: SpeechRecognitionResultEventLike) => void;
+  onerror: () => void;
+  onend?: () => void;
+  start: () => void;
+  stop?: () => void;
+};
+
+export type SpeechRecognitionCtorWindow = {
+  SpeechRecognition?: new () => SpeechRecognitionLike;
+  webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+};
