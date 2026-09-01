@@ -189,7 +189,7 @@ Cada agente dispatcheado en este plan usa estos nombres verbatim en code, tests,
 
 ### Fase 3 — Copy AISA en el debrief post-visita (Parte 2) y cierre
 
-- [ ] **aisa-debrief-copy** — executor: `/rx-ui-feature` — lane: Slice
+- [x] **aisa-debrief-copy** — executor: `/rx-ui-feature` — lane: Slice
   Brief: En `src/services.ts`, agregar una función nueva `buildDebriefTransitionCopy(objectiveId:
   string, account: Account, opportunity: Opportunity | undefined): string` que devuelve una línea
   de confirmación estilo AISA por objetivo (ej. para `approval`: algo equivalente a "Great, I will

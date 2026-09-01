@@ -3,7 +3,7 @@ import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { AlertCircle, Bot, CheckCircle2, ChevronLeft, ChevronRight, Circle, ClipboardCheck, LoaderCircle, Mic, MicOff, Sparkles } from 'lucide-solid';
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from 'solid-js';
 import { getVisitAccount } from '../selectors';
-import { buildSimulatedObjectiveAnswer, cancelSpeech, combineDebriefText, evaluateVisitObjectives, matchVoiceNavigationCommand, speakText } from '../services';
+import { buildDebriefTransitionCopy, buildSimulatedObjectiveAnswer, cancelSpeech, combineDebriefText, evaluateVisitObjectives, matchVoiceNavigationCommand, speakText } from '../services';
 import { actions, state } from '../store';
 import type { VoiceNavigationCommand } from '../services';
 
@@ -55,14 +55,21 @@ function QuestionnaireStepper() {
   const [aiStepIndex, setAiStepIndex] = createSignal(0);
   const [interimTranscript, setInterimTranscript] = createSignal('');
   const [isVoiceDisabled, setIsVoiceDisabled] = createSignal(false);
+  const [transitionCopy, setTransitionCopy] = createSignal<string | undefined>(undefined);
+  const [isTransitioning, setIsTransitioning] = createSignal(false);
   let recognition: SpeechRecognitionLike | undefined;
   let nativeListening = false;
   let nativeStateListener: PluginListenerHandle | undefined;
   const aiTimers: ReturnType<typeof setTimeout>[] = [];
+  const transitionTimers: ReturnType<typeof setTimeout>[] = [];
 
   const clearAiTimers = () => {
     aiTimers.forEach((timer) => clearTimeout(timer));
     aiTimers.length = 0;
+  };
+  const clearTransitionTimers = () => {
+    transitionTimers.forEach((timer) => clearTimeout(timer));
+    transitionTimers.length = 0;
   };
   const getSpeechCtor = () =>
     (globalThis as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }).SpeechRecognition
@@ -266,9 +273,22 @@ function QuestionnaireStepper() {
   const handleNext = () => {
     if (isLastQuestion()) {
       startAiReview();
-    } else {
-      actions.nextQuestion();
+      return;
     }
+    if (isTransitioning()) return;
+    const currentAccount = account();
+    const question = activeQuestion();
+    if (!currentAccount || !question) {
+      actions.nextQuestion();
+      return;
+    }
+    setTransitionCopy(buildDebriefTransitionCopy(question.id, currentAccount, opportunity()));
+    setIsTransitioning(true);
+    transitionTimers.push(setTimeout(() => {
+      setIsTransitioning(false);
+      setTransitionCopy(undefined);
+      actions.nextQuestion();
+    }, 900));
   };
 
   let speechToken = 0;
@@ -295,6 +315,7 @@ function QuestionnaireStepper() {
     stopVoiceCapture();
     cancelSpeech();
     clearAiTimers();
+    clearTransitionTimers();
   });
 
   return (
@@ -311,6 +332,27 @@ function QuestionnaireStepper() {
           <span style={{ width: `${totalQuestions() ? ((activeIndex() + 1) / totalQuestions()) * 100 : 0}%` }} />
         </div>
         <p>Question {activeIndex() + 1} of {totalQuestions()}</p>
+
+        <Show when={activeIndex() === 0 && !transitionCopy()}>
+          <div class="assistant-briefing-copy">
+            <Sparkles size={17} />
+            <div>
+              <p>Hey AISA, can we update my account?</p>
+              <p>Sure — let&apos;s walk through what happened on this visit.</p>
+            </div>
+          </div>
+        </Show>
+
+        <Show when={transitionCopy()}>
+          {(copy) => (
+            <div class="assistant-briefing-copy" aria-live="polite">
+              <Sparkles size={17} />
+              <div>
+                <p>{copy()}</p>
+              </div>
+            </div>
+          )}
+        </Show>
 
         <div class="objective-review-card">
           <div class="objective-review-header">
@@ -446,11 +488,11 @@ function QuestionnaireStepper() {
         </Show>
 
         <div class="question-action-bar">
-          <button class="secondary-action" disabled={activeIndex() === 0 || isAnalyzing()} onClick={() => actions.previousQuestion()}>
+          <button class="secondary-action" disabled={activeIndex() === 0 || isAnalyzing() || isTransitioning()} onClick={() => actions.previousQuestion()}>
             <ChevronLeft size={18} />
             Previous
           </button>
-          <button class="primary-action" disabled={isAnalyzing() || (isLastQuestion() && !hasAnyAnswer())} onClick={handleNext}>
+          <button class="primary-action" disabled={isAnalyzing() || isTransitioning() || (isLastQuestion() && !hasAnyAnswer())} onClick={handleNext}>
             <Show when={isLastQuestion()} fallback={<><ChevronRight size={18} />Next</>}>
               {isAnalyzing() ? <LoaderCircle size={18} class="sync-spinner" /> : <ClipboardCheck size={18} />}
               {isAnalyzing() ? 'Checking objectives' : 'Finish debrief'}
@@ -458,7 +500,7 @@ function QuestionnaireStepper() {
           </button>
         </div>
 
-        <button class="secondary-action wide" disabled={!hasAnyAnswer() || isAnalyzing()} onClick={startAiReview}>
+        <button class="secondary-action wide" disabled={!hasAnyAnswer() || isAnalyzing() || isTransitioning()} onClick={startAiReview}>
           <ClipboardCheck size={18} />
           Finish debrief now
         </button>

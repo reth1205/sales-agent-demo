@@ -559,6 +559,29 @@ export const buildSimulatedObjectiveAnswer = (
   return simulated[questionId] ?? 'The customer confirmed the current plan and had no additional concerns on this point.';
 };
 
+/**
+ * AISA-voiced confirmation line shown after an objective question is answered, before the
+ * stepper advances to the next question. Deterministic, no LLM — same `Record` keyed-by-
+ * objective-id pattern as `objectiveQuestionCopy`/`buildSimulatedObjectiveAnswer` above.
+ */
+export const buildDebriefTransitionCopy = (
+  objectiveId: string,
+  account: Account,
+  opportunity: Opportunity | undefined,
+): string => {
+  const opportunityName = opportunity?.name ?? 'the open opportunity';
+  const transitions: Record<string, string> = {
+    approval: `Got it, I will note where budget approval stands for ${account.name}. How did the rest of the conversation go?`,
+    opportunity: `Great, I will update ${opportunityName} with that next step. What else happened in the meeting?`,
+    timeline: 'Noted the timeline details. Let us talk about who was in the room.',
+    stakeholders: `Thanks, I will update the contacts on ${account.name}'s account. Anything you committed to before you left?`,
+    'follow-up': 'Got the follow-up commitment logged. Now, how does their account stand with finance?',
+    billing: 'Noted the billing status. One last thing — did anything you heard line up with outside signals on this account?',
+    'external-signal': 'Thanks, I have everything I need. Let me pull this together for you.',
+  };
+  return transitions[objectiveId] ?? `Got it, I will update the account notes for ${account.name}. Let us keep going.`;
+};
+
 export type VoiceNavigationCommand = 'next' | 'previous' | 'finish';
 
 export const matchVoiceNavigationCommand = (transcript: string): VoiceNavigationCommand | undefined => {

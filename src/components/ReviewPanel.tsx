@@ -7,7 +7,7 @@ const salesforceSteps = [
   'Connecting to Salesforce',
   'Updating account details',
   'Syncing opportunity and follow-up tasks',
-  'Salesforce update complete',
+  'AISA: Call logged, CRM updated, and your follow-up tasks are scheduled.',
 ];
 
 const objectiveStatusLabels = {
