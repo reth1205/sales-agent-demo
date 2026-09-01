@@ -61,6 +61,14 @@ Cada agente dispatcheado en este plan usa estos nombres verbatim en code, tests,
   efecto canceló/limpió audio correctamente pero disparó la narración en ambos modos — detectado
   recién en auditoría, requirió un ciclo de remediación
   (`docs/plans/2026-08-30-postvisit-aisa-guided-debrief/feedback/phase-01-postvisit-guided-debrief--rx-ui-auditor.md`).
+- Cuando una feature agrega entradas a una tabla de matching por keyword/substring sobre texto
+  generado (`.includes(keyword)` contra copy interpolado, prompts de plantilla, respuestas
+  simuladas), el brief exige un paso explícito de verificación de colisión: enumerar los inputs
+  reales desde `src/data.ts` que alimentan ese generador y confirmar que cada uno cae en el branch
+  correcto — no basta con que compile. El mismo bug (un branch muerto que nunca dispara para datos
+  reales) apareció dos veces seguidas en la misma función durante una sola tarea, la segunda vez
+  como colisión nueva introducida por el propio fix de la primera
+  (`docs/plans/2026-09-01-assistant-aisa-interactive-briefing/feedback/phase-02-aisa-briefing-dialog--rx-ui-architect.md`).
 
 ## Improvements (llenado en Etapa 5 de `/feature`, al cerrar)
 

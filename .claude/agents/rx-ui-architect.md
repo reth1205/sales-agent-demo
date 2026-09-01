@@ -107,6 +107,17 @@ en el brief · cada componente/vista referenciado tiene un import real y una rou
 (verify con un grep) · `USAGE`-level docs actualizados si una convention documentada cambió ·
 cero archivos C# leídos.
 
+Una función nueva que despacha por `.includes(keyword)` sobre texto **generado** (copy
+interpolado, `suggestedQuestions`, prompts de plantilla) se verifica contra los **strings reales
+que produce el generador**, no contra las palabras que imaginas al escribir el branch: enumera
+los inputs reales relevantes desde `src/data.ts` (todas las cuentas/oportunidades que alimentan
+ese generador, no solo una) y confirma que cada uno cae en el branch que le corresponde — que
+compile no prueba que un branch sea alcanzable. Un branch de despacho por keyword sobre texto
+generado que ya pasó por este chequeo en un plan anterior y aun así tenía dos colisiones reales
+contra datos de `data.ts` (`docs/plans/2026-09-01-assistant-aisa-interactive-briefing/feedback/phase-02-aisa-briefing-dialog--rx-ui-architect.md`)
+es la razón de esta regla — "compila" y "el branch nunca dispara para ningún dato real" no son
+mutuamente excluyentes.
+
 ## Cuando NO ser usado
 
 Page-level bug fixes / copy changes confinados a `src/views/**` o `src/components/**` sin
