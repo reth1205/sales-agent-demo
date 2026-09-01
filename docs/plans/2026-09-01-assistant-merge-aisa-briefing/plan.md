@@ -95,7 +95,10 @@ que sí lo es.
 
 ### Fase 1 — Merge del pre-visit briefing
 
-- [ ] **merge-aisa-prevideo-briefing** — executor: `/rx-ui-feature` — lane: Slice
+- [ ] **merge-aisa-prevideo-briefing** — executor: `/rx-ui-feature` — lane: Full
+  (escalado desde Slice: la tarea requiere una acción nueva en `src/store.ts` — cambio de shape,
+  territorio exclusivo del architect por `.claude/orchestrators/ui.md` — no confinada a
+  `src/views/**`/`src/components/**`.)
   Brief: Eliminar `ClientVisitStartDialog` (`src/components/ClientVisitStartDialog.tsx`, único
   consumidor `src/views/DashboardPage.tsx` línea 4/38, confirmado por grep) y reemplazar su punto
   de entrada. `DefaultVisitBriefNotification.tsx` línea 27 hoy llama `actions.selectMapVisit`
@@ -129,10 +132,9 @@ que sí lo es.
   Vocabulary rows aplicables: `AisaBriefingDialog`, `openPreVisitAisaBriefing`,
   "Simulate approach", `Map Demo`.
   Acceptance: criterios 1-7 de la tabla arriba, con su superficie de observación.
-  Contract approval: no requerida (sin schema/auth/integración externa) — si el architect
-  descubre que el rewiring de `store.ts` es más invasivo de lo estimado (p. ej. colisiona con el
-  pacing de `Map Demo`), escala la tarea a Full por el mecanismo estándar en vez de improvisar
-  dentro del Slice.
+  Contract approval: no requerida (sin schema/auth/integración externa) — el architect diseña el
+  cambio de `store.ts` (Full por shape change, no por schema/auth), sin aprobación humana
+  adicional más allá del checkpoint de este plan.
   Known-accepted: `ClientVisitStartDialog.tsx` se borra por completo, no se deja como código
   muerto ni se re-exporta.
   Feedback esperado: `feedback/phase-01-merge-aisa-prevideo-briefing--rx-ui-architect.md`,
