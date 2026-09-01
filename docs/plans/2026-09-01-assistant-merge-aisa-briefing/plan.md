@@ -1,7 +1,7 @@
 ---
-status: open
+status: closed
 created: 2026-09-01
-closed:
+closed: 2026-09-01
 ---
 
 # Merge pre-visit briefing into a single AISA dialog
@@ -95,7 +95,7 @@ que sí lo es.
 
 ### Fase 1 — Merge del pre-visit briefing
 
-- [ ] **merge-aisa-prevideo-briefing** — executor: `/rx-ui-feature` — lane: Full
+- [x] **merge-aisa-prevideo-briefing** — executor: `/rx-ui-feature` — lane: Full
   (escalado desde Slice: la tarea requiere una acción nueva en `src/store.ts` — cambio de shape,
   territorio exclusivo del architect por `.claude/orchestrators/ui.md` — no confinada a
   `src/views/**`/`src/components/**`.)
@@ -165,4 +165,25 @@ que sí lo es.
 
 ## Improvements (llenado en Etapa 5 de `/feature`, al cerrar)
 
-<pendiente al cierre>
+Auditoría: 0 CRITICAL, 0 WARNING, 2 INFO (no bloqueantes) — CSS huérfano de
+`ClientVisitStartDialog` en `src/styles.css` y un guard ahora-siempre-falso en
+`DefaultVisitBriefNotification.tsx` (`visitBriefingAccountId`), ambos inofensivos, no ameritan
+ciclo de remediación.
+
+Las 3 filas de *Proposed guide updates* (feedback del architect) documentan fricción real pero
+ninguna nombra un defecto que llegó a shippearse — las tres se atraparon y resolvieron dentro de
+esta misma tarea (id de notificación sin colisión, wording de acceptance re-interpretado con
+intent correcto, `triggerReason` extendido correctamente). No son hard gate; quedan
+`→ deferred to /improve` en el archivo de feedback del architect para que `/improve` las
+disposicione junto con el resto del corpus.
+
+### Verificación en vivo (Etapa 4)
+
+El developer corrió `npm run dev` + Playwright (headless Chromium) tras cerrar Fase 1: login →
+banner "Client brief ready" → `AisaBriefingDialog` monta en paso `prompt` en ~57ms (mismo tick,
+sin `ClientVisitStartDialog`, sin espera) → "Yes, let's hear it" → resumen + objetivos + preguntas
+"Ask AISA" → tap en una pregunta → respuesta relevante y específica de la cuenta en el transcript
+→ "Simulate approach" cierra el sheet de inmediato, corre la animación de ruta (~15s), muestra el
+toast "Arrived near…", y no reabre el sheet ni crea una notificación `arrivalBriefing`/
+`preMeetingBriefing` nueva. Sesión separada: "End briefing" solo cierra el sheet sin animación.
+Cero errores de consola en todo el recorrido. `npm run build` limpio.

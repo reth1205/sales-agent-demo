@@ -1007,6 +1007,18 @@ span {
   cursor: pointer;
 }
 
+.aisa-dialog-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.aisa-dialog-actions .aisa-primary-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
 .aisa-question-list {
   display: grid;
   gap: 6px;

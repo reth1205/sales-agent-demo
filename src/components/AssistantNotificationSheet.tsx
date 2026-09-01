@@ -65,6 +65,7 @@ function AssistantNotificationSheet() {
                     account={activeAccount()}
                     opportunity={getAccountOpportunity(activeAccount().id)}
                     onEndBriefing={() => actions.clearAssistantNotification()}
+                    onSimulateApproach={() => actions.startClientDestinationDemo(activeAccount().id)}
                   />
                 )}
               </Show>

@@ -24,7 +24,7 @@ function DefaultVisitBriefNotification() {
   const openBrief = () => {
     const currentVisit = visit();
     if (!currentVisit) return;
-    actions.selectMapVisit(currentVisit.id);
+    actions.openPreVisitAisaBriefing(currentVisit.id);
   };
 
   return (

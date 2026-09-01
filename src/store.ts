@@ -543,6 +543,48 @@ export const actions = {
   triggerPreMeetingBriefing(visitId: string, triggerReason: AssistantNotification['triggerReason'] = 'demoTimer') {
     actions.triggerArrivalBriefing(visitId, triggerReason);
   },
+  /**
+   * Entry point for the "Client brief ready" banner: builds the pre-meeting briefing from the
+   * rep's REAL current position (no location mutation, unlike `startClientDestinationDemo`) and
+   * opens the AISA sheet in the same tick — same inline-open pattern as
+   * `triggerPostMeetingDebrief`, so no approach animation blocks the dialog.
+   *
+   * Notification id is `previsit-${visitId}` on purpose: `pre-${visitId}` is the id
+   * `schedulePreMeetingDemo` guards on for the Map Demo tour, and no creator produces it today.
+   */
+  openPreVisitAisaBriefing(visitId: string, triggerReason: AssistantNotification['triggerReason'] = 'manualBriefRequest') {
+    const context = getVisitContext(visitId);
+    if (!context) return;
+    const notificationId = `previsit-${visitId}`;
+    const distance = getDistanceMeters(state.location.current, {
+      latitude: context.account.latitude,
+      longitude: context.account.longitude,
+    });
+    const briefing = buildPreMeetingBriefing(
+      context.visit,
+      context.account,
+      context.contactsForAccount,
+      context.opportunity,
+      context.tasksForAccount,
+      context.activitiesForAccount,
+      distance,
+    );
+    upsertBriefing(briefing);
+    upsertNotification({
+      id: notificationId,
+      type: 'preMeetingBriefing',
+      visitId,
+      accountId: context.account.id,
+      title: `Briefing for ${context.account.name}`,
+      message: `AISA prepared the pre-visit briefing for ${context.account.name}.`,
+      triggerReason,
+      createdAt: new Date().toISOString(),
+      status: 'unread',
+    });
+    persistAssistant();
+    setState('ui', 'visitBriefingAccountId', undefined);
+    actions.openAssistantNotification(notificationId);
+  },
   triggerPostMeetingDebrief(visitId: string, triggerReason: AssistantNotification['triggerReason'] = 'meetingTimer') {
     const context = getVisitContext(visitId);
     if (!context) return;
@@ -739,6 +781,11 @@ export const actions = {
     if (!account) return;
     globalThis.open(buildNavigationUrl(account), '_blank', 'noopener,noreferrer');
   },
+  /**
+   * ~15s route animation toward `accountId`. Single call site: the "Simulate approach" CTA in
+   * `AisaBriefingDialog`. It clears `activeAssistantNotificationId` up front, so the AISA sheet
+   * closes as the animation starts and the map is visible for its whole run.
+   */
   startClientDestinationDemo(accountId: string) {
     clearMapDemoTimer();
     const account = state.crm.accounts.find((item) => item.id === accountId);
@@ -805,7 +852,9 @@ export const actions = {
         setState('location', { current: end, permission: 'granted', isDemo: true });
         setState('ui', 'mapDemo', initialMapDemoState());
         if (visit) {
-          actions.triggerArrivalBriefing(visit.id, 'simulatedArrival');
+          // No `triggerArrivalBriefing` here: this animation is now only reachable from the
+          // "Simulate approach" CTA inside a briefing the rep has already read, so re-raising an
+          // arrivalBriefing notification would reopen the sheet they just closed.
           setState('ui', 'activeVisitPromptId', visit.id);
         }
         actions.showToast(`Arrived near ${account.name}.`);

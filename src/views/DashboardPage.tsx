@@ -1,7 +1,6 @@
 import { Layers } from 'lucide-solid';
 import AssistantNotificationSheet from '../components/AssistantNotificationSheet';
 import AssistantTopNotification from '../components/AssistantTopNotification';
-import ClientVisitStartDialog from '../components/ClientVisitStartDialog';
 import DefaultVisitBriefNotification from '../components/DefaultVisitBriefNotification';
 import MapView from '../components/MapView';
 import MeetingSimulationBanner from '../components/MeetingSimulationBanner';
@@ -35,7 +34,6 @@ function DashboardPage() {
         </div>
       </div>
       <VisitStatusPrompt />
-      <ClientVisitStartDialog />
       <AssistantNotificationSheet />
     </>
   );

@@ -112,7 +112,7 @@ export type AssistantNotification = {
   accountId: string;
   title: string;
   message: string;
-  triggerReason: 'demoTimer' | 'destinationStart' | 'simulatedArrival' | 'geofenceArrival' | 'geofenceExit' | 'meetingTimer';
+  triggerReason: 'demoTimer' | 'destinationStart' | 'simulatedArrival' | 'geofenceArrival' | 'geofenceExit' | 'meetingTimer' | 'manualBriefRequest';
   createdAt: string;
   status: AssistantNotificationStatus;
 };

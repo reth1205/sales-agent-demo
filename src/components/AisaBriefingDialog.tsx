@@ -1,4 +1,4 @@
-import { CheckCircle2, MessageCircleQuestion, Sparkles, Target } from 'lucide-solid';
+import { CheckCircle2, MessageCircleQuestion, Route, Sparkles, Target } from 'lucide-solid';
 import { For, Show, createMemo, createSignal } from 'solid-js';
 import { buildBriefingFollowUpAnswer, buildVisitObjectives } from '../services';
 import type { Account, Opportunity, PreMeetingBriefing } from '../types';
@@ -11,6 +11,12 @@ type AisaBriefingDialogProps = {
   opportunity?: Opportunity;
   /** Invoked by the "End briefing" action; the parent decides how to close the sheet. */
   onEndBriefing: () => void;
+  /**
+   * Optional. When provided, a "Simulate approach" CTA is offered beside "End briefing" at the
+   * end of the briefing. The parent owns what it does (route animation) and how the sheet closes
+   * — this component only reports the tap and returns to its `ended` step.
+   */
+  onSimulateApproach?: () => void;
 };
 
 type FollowUpExchange = {
@@ -47,6 +53,12 @@ function AisaBriefingDialog(props: AisaBriefingDialogProps) {
     setExchanges([]);
     setStep('ended');
     props.onEndBriefing();
+  };
+
+  const simulateApproach = () => {
+    setExchanges([]);
+    setStep('ended');
+    props.onSimulateApproach?.();
   };
 
   return (
@@ -132,9 +144,17 @@ function AisaBriefingDialog(props: AisaBriefingDialogProps) {
           </section>
         </Show>
 
-        <button class="details-toggle" onClick={endBriefing}>
-          End briefing
-        </button>
+        <div class="aisa-dialog-actions">
+          <Show when={props.onSimulateApproach}>
+            <button class="aisa-primary-action" onClick={simulateApproach}>
+              <Route size={15} />
+              Simulate approach
+            </button>
+          </Show>
+          <button class="details-toggle" onClick={endBriefing}>
+            End briefing
+          </button>
+        </div>
       </Show>
 
       <Show when={step() === 'ended'}>
