@@ -259,7 +259,7 @@ export const buildVisitObjectives = (
   const opportunityName = opportunity?.name ?? 'active opportunity';
   const opportunityValue = opportunity ? formatCurrency(opportunity.amount) : 'the open pipeline';
 
-  return [
+  const items: VisitObjectiveItem[] = [
     {
       id: 'approval',
       label: 'Confirm approval path',
@@ -286,6 +286,24 @@ export const buildVisitObjectives = (
       detail: 'Capture tasks, proposal/pricing follow-up, and the next meeting date.',
     },
   ];
+
+  if (account.creditHold) {
+    items.push({
+      id: 'billing',
+      label: 'Resolve billing situation',
+      detail: `Address the ${formatCurrency(account.creditHold.amount)} outstanding balance, now ${account.creditHold.overdueDays} days late.`,
+    });
+  }
+
+  if (account.externalSignals && account.externalSignals.length > 0) {
+    items.push({
+      id: 'external-signal',
+      label: 'Validate external intel',
+      detail: `Confirm what you are hearing against the ${account.externalSignals.length} outside item(s) we picked up, starting with ${account.externalSignals[0].source}.`,
+    });
+  }
+
+  return items;
 };
 
 const buildVisitObjectiveDefinitions = (
@@ -293,38 +311,48 @@ const buildVisitObjectiveDefinitions = (
   opportunity: Opportunity | undefined,
 ): VisitObjectiveDefinition[] => {
   const objectives = buildVisitObjectives(account, opportunity);
-  return [
-    {
-      ...objectives[0],
+  const matching: Record<string, { requiredSignals: string[][]; partialEvidence: string; missedEvidence: string }> = {
+    approval: {
       requiredSignals: [['budget', 'approval', 'approved', 'contract', 'sign off', 'signoff']],
       partialEvidence: 'Approval was mentioned, but the final owner or path is unclear.',
       missedEvidence: 'No clear budget or contract approval signal captured.',
     },
-    {
-      ...objectives[1],
+    opportunity: {
       requiredSignals: [['opportunity', 'proposal', 'pilot', 'renewal', opportunity?.stage.toLowerCase() ?? 'stage']],
       partialEvidence: 'Opportunity context was mentioned without a clear stage or next step.',
       missedEvidence: 'No clear opportunity update captured.',
     },
-    {
-      ...objectives[2],
+    timeline: {
       requiredSignals: [['timeline', 'implementation', 'rollout', 'delivery', 'schedule']],
       partialEvidence: 'Timing came up, but the risk or date needs confirmation.',
       missedEvidence: 'No implementation or delivery timing signal captured.',
     },
-    {
-      ...objectives[3],
+    stakeholders: {
       requiredSignals: [['champion', 'procurement', 'stakeholder', 'contact', 'decision maker', 'decision-maker']],
       partialEvidence: 'A stakeholder was mentioned without a role change or action.',
       missedEvidence: 'No stakeholder or contact update captured.',
     },
-    {
-      ...objectives[4],
+    'follow-up': {
       requiredSignals: [['task', 'follow up', 'send', 'next week', 'meeting', 'pricing', 'proposal']],
       partialEvidence: 'A next step was mentioned, but date or owner needs review.',
       missedEvidence: 'No clear next commitment captured.',
     },
-  ];
+    billing: {
+      requiredSignals: [['invoice', 'overdue', 'credit hold', 'past due', 'payment', 'collections', 'unpaid']],
+      partialEvidence: 'Billing came up, but the balance or timing was not confirmed.',
+      missedEvidence: 'No billing or collections signal captured.',
+    },
+    'external-signal': {
+      requiredSignals: [['linkedin', 'hiring', 'job posting', 'tender', 'rfp', 'press release', 'announcement']],
+      partialEvidence: 'External intel was referenced, but not confirmed against what we picked up.',
+      missedEvidence: 'No external signal confirmation captured.',
+    },
+  };
+
+  return objectives.map((objective) => ({
+    ...objective,
+    ...matching[objective.id],
+  }));
 };
 
 export const evaluateVisitObjectives = (
@@ -387,12 +415,16 @@ export const getActiveQuestions = (questions: InterviewQuestion[]) =>
   [...questions].filter((question) => question.isActive).sort((a, b) => a.order - b.order);
 
 /**
- * Spoken-language prompts for the five fixed visit objectives.
+ * Spoken-language prompts for the five fixed visit objectives, plus the two conditional
+ * objectives (`billing`, `external-signal`) that only appear for accounts with a `creditHold`
+ * or `externalSignals` entry.
  *
  * IMPORTANT: each prompt is deliberately written WITHOUT the keyword signals that
  * `evaluateVisitObjectives` matches on (budget/approval/contract/sign off, opportunity/proposal/
  * pilot/renewal, timeline/implementation/rollout/delivery/schedule, champion/procurement/
- * stakeholder/contact/decision maker, task/follow up/send/next week/meeting/pricing).
+ * stakeholder/contact/decision maker, task/follow up/send/next week/meeting/pricing,
+ * invoice/overdue/credit hold/past due/payment/collections/unpaid, linkedin/hiring/job posting/
+ * tender/rfp/press release/announcement).
  * `combineDebriefText` folds the prompt of every ANSWERED question into the evaluated text, so a
  * prompt containing its own signals would mark its objective `met` from the question copy alone.
  * Reword with care.
@@ -417,6 +449,14 @@ const objectiveQuestionCopy: Record<string, { prompt: string; category: Question
   'follow-up': {
     prompt: 'Finally, what did you commit to before you left, and when are the two of you speaking again?',
     category: 'followUp',
+  },
+  billing: {
+    prompt: 'Before we move on, how is their account standing with finance, and did they mention clearing the older balance?',
+    category: 'account',
+  },
+  'external-signal': {
+    prompt: 'Did anything you heard match what we have been seeing about them outside our own records?',
+    category: 'account',
   },
 };
 
@@ -448,6 +488,8 @@ export const buildSimulatedObjectiveAnswer = (
     timeline: 'Implementation has to begin before the next store opening, so the rollout timeline is tight but committed.',
     stakeholders: `Our champion at ${account.name} stays in place, and procurement now joins as an additional decision maker.`,
     'follow-up': 'I will send the updated pricing deck next week and we booked the technical review meeting as a follow up.',
+    billing: `They acknowledged the invoice is overdue and past due, and confirmed a payment plan to clear collections.`,
+    'external-signal': 'They confirmed the linkedin hiring push is real and referenced the tender they are preparing to file.',
   };
   return simulated[questionId] ?? 'The customer confirmed the current plan and had no additional concerns on this point.';
 };

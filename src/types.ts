@@ -32,6 +32,19 @@ export type Account = {
   nextAction?: string;
   isNearbyCandidate?: boolean;
   hasEscalation?: boolean;
+  /** Present only when finance has blocked the account; drives the conditional `billing` visit objective. */
+  creditHold?: {
+    amount: number;
+    overdueDays: number;
+    invoiceReason: string;
+  };
+  /** Outside-CRM intel (LinkedIn, press, tenders); a non-empty array drives the `external-signal` visit objective. */
+  externalSignals?: {
+    id: string;
+    source: string;
+    summary: string;
+    detectedAt: string;
+  }[];
 };
 
 export type Contact = {

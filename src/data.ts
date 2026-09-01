@@ -131,6 +131,25 @@ export const accounts: Account[] = [
     nextAction: 'Recover pricing discussion',
     isNearbyCandidate: true,
     hasEscalation: true,
+    creditHold: {
+      amount: 18400,
+      overdueDays: 47,
+      invoiceReason: 'Two invoices from the March multi-site order were never settled after the discount dispute.',
+    },
+    externalSignals: [
+      {
+        id: 'signal-urban-foods-1',
+        source: 'LinkedIn',
+        summary: 'Urban Foods Group posted three kitchen operations roles for two unannounced locations.',
+        detectedAt: '2026-05-28',
+      },
+      {
+        id: 'signal-urban-foods-2',
+        source: 'Trade press',
+        summary: 'Regional food service outlet reported Urban Foods Group shortlisted for a municipal catering tender.',
+        detectedAt: '2026-06-02',
+      },
+    ],
   },
   {
     id: 'acct-atlas',

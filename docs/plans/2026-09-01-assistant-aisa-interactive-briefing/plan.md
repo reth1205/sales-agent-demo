@@ -130,7 +130,7 @@ Cada agente dispatcheado en este plan usa estos nombres verbatim en code, tests,
 
 ### Fase 1 — Modelo de datos y objetivos condicionales
 
-- [ ] **aisa-objective-data-model** — executor: `/rx-ui-feature` — lane: Full
+- [x] **aisa-objective-data-model** — executor: `/rx-ui-feature` — lane: Full
   Brief: Agregar a `Account` (`src/types.ts:18-35`) los campos opcionales `creditHold?: { amount:
   number; overdueDays: number; invoiceReason: string }` y `externalSignals?: { id: string; source:
   string; summary: string; detectedAt: string }[]`. Sembrar al menos 1 cuenta en `src/data.ts` con
