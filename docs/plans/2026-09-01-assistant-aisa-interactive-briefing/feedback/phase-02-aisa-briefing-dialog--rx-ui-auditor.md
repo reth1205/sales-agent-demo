@@ -26,7 +26,7 @@
 
 ## Proposed guide updates
 
-| Archivo | Cambio propuesto |
-|---|---|
-| `.claude/agents/rx-ui-architect.md` | When a new pure function branches on `.includes(keyword)` against a *generated* string (suggestedQuestions, dynamic copy), require the author to trace at least one real generated value per branch against actual `data.ts` content before handoff — compiling is not enough to catch a dead branch. |
-| `.claude/orchestrators/ui.md` | Codify the "no browser-automation tool available" fallback the developer already improvised (static trigger-path trace + explicit disclosure) as the standard note format, so auditors don't have to re-derive it each time. |
+| Archivo | Cambio propuesto | Disposition |
+|---|---|---|
+| `.claude/agents/rx-ui-architect.md` | When a new pure function branches on `.includes(keyword)` against a *generated* string (suggestedQuestions, dynamic copy), require the author to trace at least one real generated value per branch against actual `data.ts` content before handoff — compiling is not enough to catch a dead branch. | → applied 0ac9364 (same fix already landed for the identical row on the phase-01/phase-02 architect feedback files) |
+| `.claude/orchestrators/ui.md` | Codify the "no browser-automation tool available" fallback the developer already improvised (static trigger-path trace + explicit disclosure) as the standard note format, so auditors don't have to re-derive it each time. | deferred to /improve — process-consistency nit, no defect attached; also partly moot: the conductor did run a real browser (Playwright) for live verification of this plan before close. |

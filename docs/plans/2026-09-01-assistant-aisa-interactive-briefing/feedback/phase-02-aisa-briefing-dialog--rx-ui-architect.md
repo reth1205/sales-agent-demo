@@ -57,9 +57,9 @@ ninguno, y el remount ya satisface AC4.
 
 ## Proposed guide updates
 
-| Archivo | Cambio propuesto |
-|---|---|
-| `.claude/agents/rx-ui-architect.md` | Añadir `src/styles.css` al scope del architect **para las clases que introducen sus componentes nuevos**; el developer sigue siendo dueño de las clases page-level. Hoy el archivo no le pertenece a nadie. |
-| `.claude/orchestrators/ui.md` | En lane Full, regla explícita: toda función pura nueva de `src/services.ts` que un componente compartido nuevo consuma la entrega el architect junto al componente, no el developer. Elimina la decisión caso-por-caso. |
-| `.claude/skills/feature/SKILL.md` | Las tarjetas de dispatch que citan un campo de un tipo deben citar el nombre real del campo verificado contra `src/types.ts` (aquí: `summary`, no `headline`). |
-| `.claude/agents/rx-ui-architect.md` | Regla nueva en "Self-verification": una función de despacho por keyword debe verificarse contra los **strings reales que produce el generador**, no contra las palabras que el autor imagina. Si el input es texto generado por plantilla, enumerar los inputs reales desde `src/data.ts` y confirmar que cada uno cae en un branch distinto. Mi defecto original y las dos colisiones subsecuentes salen todos de saltarme ese paso. |
+| Archivo | Cambio propuesto | Disposición |
+|---|---|---|
+| `.claude/agents/rx-ui-architect.md` | Añadir `src/styles.css` al scope del architect **para las clases que introducen sus componentes nuevos**; el developer sigue siendo dueño de las clases page-level. Hoy el archivo no le pertenece a nadie. | deferred to /improve — clarificación de scope, sin defecto asociado |
+| `.claude/orchestrators/ui.md` | En lane Full, regla explícita: toda función pura nueva de `src/services.ts` que un componente compartido nuevo consuma la entrega el architect junto al componente, no el developer. Elimina la decisión caso-por-caso. | deferred to /improve — clarificación de scope, sin defecto asociado |
+| `.claude/skills/feature/SKILL.md` | Las tarjetas de dispatch que citan un campo de un tipo deben citar el nombre real del campo verificado contra `src/types.ts` (aquí: `summary`, no `headline`). | rejected — verificado contra las tarjetas de dispatch reales de este plan (Fase 1 y Fase 2): ninguna cita `headline`, ambas usan `summary` correctamente desde el primer draft. No se pudo confirmar el incidente que motiva la fila. |
+| `.claude/agents/rx-ui-architect.md` | Regla nueva en "Self-verification": una función de despacho por keyword debe verificarse contra los **strings reales que produce el generador**, no contra las palabras que el autor imagina. Si el input es texto generado por plantilla, enumerar los inputs reales desde `src/data.ts` y confirmar que cada uno cae en un branch distinto. Mi defecto original y las dos colisiones subsecuentes salen todos de saltarme ese paso. | → applied 0ac9364 |

@@ -1,7 +1,7 @@
 ---
-status: open
+status: closed
 created: 2026-09-01
-closed:
+closed: 2026-09-01
 ---
 
 # Diálogo interactivo AISA — pre-visita (Parte 1) y debrief post-visita (Parte 2)
@@ -234,5 +234,53 @@ Cada agente dispatcheado en este plan usa estos nombres verbatim en code, tests,
 
 ## Improvements (llenado en Etapa 5 de `/feature`, al cerrar)
 
-<Cross-task themes destilados de `feedback/*/Proposed guide updates`, cada uno apuntando al
-archivo real que se actualizó o se va a actualizar.>
+Un tema cruzó 3 de los 4 archivos de feedback (architect Fase 1, architect Fase 2, auditor Fase
+2), todos sobre la misma falla raíz: una función que despacha por `.includes(keyword)` sobre
+texto **generado** (prompts de plantilla, `suggestedQuestions`, respuestas simuladas) puede
+compilar y aun así tener un branch que nunca dispara para ningún dato real — y el mismo bug
+reapareció DOS VECES seguidas en la misma función (`buildBriefingFollowUpAnswer`) durante esta
+tarea: una vez como el defecto original (WARNING high del auditor de Fase 2), otra vez como una
+colisión nueva que el fix ingenuo de la primera habría introducido, atrapada solo porque el
+architect trazó los 8 datos demo reales antes de dar el fix por bueno.
+
+**Aplicado (commit `0ac9364`):** la regla "traza los inputs reales generados desde `src/data.ts`
+por cada branch, no las palabras que imaginas" quedó codificada en tres lugares — la sección
+Self-verification de `.claude/agents/rx-ui-architect.md`, las reglas de BRIEF ACCURACY de
+`docs/plans/_templates/plan.md` (para que el conductor la incluya en la tarjeta de dispatch desde
+el inicio), y el invariante del namespace global de keywords documentado en el `CLAUDE.md` raíz
+(antes solo vivía en un doc comment de `services.ts`).
+
+**Rechazado:** una fila de `.claude/skills/feature/SKILL.md` sobre citar nombres de campo
+verificados (`summary` no `headline`) — no se pudo confirmar que ninguna tarjeta de dispatch de
+este plan citara `headline`; ambas ya usaban `summary` correctamente.
+
+**Diferido a `/improve`** (clarificaciones de scope y de formato, sin defecto de producción
+asociado): `src/data.ts` en el Alcance declarado de `rx-ui-architect`; `src/styles.css` como
+territorio del architect para clases de sus propios componentes nuevos; ownership de funciones
+puras nuevas de `services.ts` consumidas por un componente compartido nuevo; formato estándar
+para la nota de "sin herramienta de browser disponible" que developer/auditor de Fase 2 y 3
+tuvieron que improvisar cada vez (parcialmente mitigado: el conductor sí corrió una verificación
+real en browser vía Playwright antes de cerrar este plan — ver Etapa 4 abajo); y dos filas en
+bullet-list (no tabla, `feedback/phase-03-aisa-debrief-copy--rx-ui-{developer,auditor}.md`) sobre
+nombrar explícitamente el array/variable exacto cuando un brief apunta a "el texto de confirmación
+final" en un componente con tanto un toast a nivel store como un array local de labels.
+
+### Verificación en vivo (Etapa 4)
+
+Sin herramienta de browser en el sandbox de los agentes developer/auditor, el conductor levantó
+`npm run dev` y condujo el flujo completo con Playwright (headless Chromium) tras cerrar las 3
+fases:
+
+- **Parte 1** (cuenta Acme Corporation): banner "Review brief and simulate route" → diálogo de
+  objetivos → "Start" → animación de acercamiento (~15s) → notificación de llegada → sheet monta
+  `AisaBriefingDialog` en paso `prompt` (sin resumen visible) → "Yes, let's hear it" → resumen con
+  datos reales de la cuenta (no prosa hardcodeada) + Call Objectives → tocar una pregunta sugerida
+  → respuesta distinta y relevante → "End briefing" cierra el sheet. Cero errores de consola.
+- **Parte 2** (cuenta Urban Foods Group, 7 objetivos por `creditHold`/`externalSignals`): Schedule
+  → Start Visit → Finish Interview → Open Post Interview → línea de intro AISA visible → checklist
+  de 7 objetivos (incluye "Resolve billing situation" y "Validate external intel") → Simulate
+  answer + Next en cada pregunta, línea de transición AISA confirmada visible tras la primera
+  respuesta → Finish debrief → ReviewPanel muestra los 7 objetivos evaluados correctamente (billing
+  y external-signal ambos `Met` con evidence correcta) → Confirm submission → línea "AISA: Call
+  logged, CRM updated, and your follow-up tasks are scheduled." presente en el paso final de sync.
+  Cero errores de consola, sin regresión de layout visible.
