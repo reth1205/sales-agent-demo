@@ -82,7 +82,7 @@ real — la inconsistencia se nota y debilita la narrativa de "asistente convers
 
 ### Fase 1 — Recall del brief desde el pin del mapa
 
-- [ ] **recall-brief-from-map-pin** — executor: `/rx-ui-feature` — lane: Slice
+- [x] **recall-brief-from-map-pin** — executor: `/rx-ui-feature` — lane: Slice
   Brief: En `src/components/DefaultVisitBriefNotification.tsx`, generalizar el banner "Client brief
   ready" para que reaccione a la cuenta seleccionada vía su pin en el mapa
   (`state.ui.selectedMapAccountId`/`state.ui.selectedMapVisitId`, poblados por

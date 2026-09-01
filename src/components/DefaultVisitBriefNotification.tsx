@@ -1,10 +1,16 @@
 import { BellRing, ChevronRight, MapPinned } from 'lucide-solid';
 import { Show } from 'solid-js';
-import { getNextScheduledVisit, getVisitAccount } from '../selectors';
+import { getNextScheduledVisit, getSelectedMapVisit, getVisitAccount } from '../selectors';
 import { actions, state } from '../store';
 
 function DefaultVisitBriefNotification() {
-  const visit = () => getNextScheduledVisit();
+  const visit = () => {
+    if (state.ui.selectedMapAccountId) {
+      const selectedVisit = getSelectedMapVisit();
+      return selectedVisit && selectedVisit.status !== 'Completed' ? selectedVisit : undefined;
+    }
+    return getNextScheduledVisit();
+  };
   const account = () => {
     const currentVisit = visit();
     return currentVisit ? getVisitAccount(currentVisit) : undefined;
@@ -14,8 +20,6 @@ function DefaultVisitBriefNotification() {
   const shouldShow = () => Boolean(
     visit()
     && account()
-    && !state.ui.selectedMapAccountId
-    && !state.ui.visitBriefingAccountId
     && !state.ui.activeAssistantNotificationId
     && !hasVisibleAssistantNotification()
     && !state.ui.mapDemo.isRunning
