@@ -1,7 +1,8 @@
 import { useNavigate } from '@solidjs/router';
-import { Bot, Mic, Sparkles, X } from 'lucide-solid';
-import { For, Show } from 'solid-js';
-import { getVisitAccount } from '../selectors';
+import { Bot, Mic, X } from 'lucide-solid';
+import { Show } from 'solid-js';
+import AisaBriefingDialog from './AisaBriefingDialog';
+import { getAccountOpportunity, getVisitAccount } from '../selectors';
 import { actions, state } from '../store';
 
 function AssistantNotificationSheet() {
@@ -21,19 +22,6 @@ function AssistantNotificationSheet() {
   const briefing = () => {
     const active = notification();
     return active ? state.assistant.briefings.find((item) => item.visitId === active.visitId) : undefined;
-  };
-  const briefingParagraphs = () => {
-    const customerName = account()?.name ?? 'Global Retail';
-    return [
-      `Looks like you're almost at ${customerName}.`,
-      "Before you walk in, here's what matters most today.",
-      "Your champion, Sarah Johnson, hasn't responded to the implementation estimate you sent last week.",
-      'You still have one overdue follow-up task from five days ago.',
-      "Good news: customer engagement has increased this month, and there's a strong opportunity to expand into two additional stores.",
-      'The current pipeline value for this account is $95,000.',
-      "Don't forget to ask about their Q4 rollout plans. That topic came up in your last two meetings but hasn't been captured in the CRM yet.",
-      "After today's visit, your next commitment is a technical review with their IT team next Tuesday.",
-    ];
   };
   const openDebrief = () => {
     const currentVisit = visit();
@@ -55,7 +43,7 @@ function AssistantNotificationSheet() {
             <div class="assistant-title">
               <Bot size={19} />
               <div>
-                <span class="eyebrow">{isBriefing() ? 'AI briefing' : 'Post interview'}</span>
+                <span class="eyebrow">{isBriefing() ? 'AISA briefing' : 'Post interview'}</span>
                 <h2>{active().title}</h2>
               </div>
             </div>
@@ -69,14 +57,18 @@ function AssistantNotificationSheet() {
           </Show>
 
           <Show when={isBriefing() && briefing()}>
-            <div class="assistant-briefing-copy">
-              <Sparkles size={17} />
-              <div>
-                <For each={briefingParagraphs()}>
-                  {(paragraph) => <p>{paragraph}</p>}
-                </For>
-              </div>
-            </div>
+            {(activeBriefing) => (
+              <Show when={account()}>
+                {(activeAccount) => (
+                  <AisaBriefingDialog
+                    briefing={activeBriefing()}
+                    account={activeAccount()}
+                    opportunity={getAccountOpportunity(activeAccount().id)}
+                    onEndBriefing={() => actions.clearAssistantNotification()}
+                  />
+                )}
+              </Show>
+            )}
           </Show>
 
           <Show when={active().type === 'postMeetingDebrief'}>

@@ -159,7 +159,7 @@ Cada agente dispatcheado en este plan usa estos nombres verbatim en code, tests,
 
 ### Fase 2 — Diálogo interactivo AISA de pre-visita (Parte 1)
 
-- [ ] **aisa-briefing-dialog** — executor: `/rx-ui-feature` — lane: Full
+- [x] **aisa-briefing-dialog** — executor: `/rx-ui-feature` — lane: Full
   Brief: Crear `src/components/AisaBriefingDialog.tsx`, un componente con estado local
   (`createSignal`, no persistido en `store.ts`/`localStorage`) que modela 4 pasos: `prompt`
   (mensaje inicial + acción para iniciar, ej. "Yes, let's hear it"), `summary` (resumen generado
